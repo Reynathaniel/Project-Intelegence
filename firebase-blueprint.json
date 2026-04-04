@@ -1,0 +1,344 @@
+{
+  "entities": {
+    "Project": {
+      "title": "Project",
+      "description": "A construction or engineering project managed by REY-COMMAND.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Project name" },
+        "description": { "type": "string", "description": "Project description" },
+        "location": { "type": "string", "description": "Project location" },
+        "startDate": { "type": "string", "format": "date", "description": "Project start date" },
+        "endDate": { "type": "string", "format": "date", "description": "Project end date" },
+        "status": { "type": "string", "enum": ["Active", "Completed", "On Hold"], "description": "Current project status" },
+        "managerId": { "type": "string", "description": "UID of the project manager" },
+        "contractNo": { "type": "string" },
+        "client": { "type": "string" },
+        "contractorName": { "type": "string" },
+        "clientLogo": { "type": "string" },
+        "contractorLogo": { "type": "string" },
+        "assignedUserEmail": { "type": "string" },
+        "dashboardConfig": {
+          "type": "object",
+          "properties": {
+            "visibleWidgets": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "approvalConfig": {
+          "type": "object",
+          "properties": {
+            "qcMaterialRequestRoles": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      },
+      "required": ["name", "status", "managerId"]
+    },
+    "DailyReport": {
+      "title": "Daily Report",
+      "description": "Daily report submitted by a specific discipline for a project.",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string", "description": "ID of the project" },
+        "discipline": { "type": "string", "enum": ["Admin", "Logistics", "Supervisor", "HSE", "QC", "HR", "Procurement", "Document Control", "Mechanic & Electrical", "Project Control", "CC", "CM", "Project Manager", "General Manpower", "Engineering", "campbos", "Permit Officer", "Paramedic", "Super Admin", "Subcontractor Super Admin"], "description": "Discipline submitting the report" },
+        "date": { "type": "string", "format": "date", "description": "Report date" },
+        "authorId": { "type": "string", "description": "UID of the reporter" },
+        "authorName": { "type": "string", "description": "Name of the reporter" },
+        "data": { "type": "string", "description": "JSON string containing discipline-specific report data" },
+        "status": { "type": "string", "enum": ["Draft", "Submitted"], "description": "Report status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "weather": {
+          "type": "object",
+          "properties": {
+            "rainy": { "type": "number" },
+            "drizzle": { "type": "number" },
+            "cloudy": { "type": "number" },
+            "sunny": { "type": "number" },
+            "workingTime": { "type": "string" }
+          }
+        },
+        "manpower": {
+          "type": "object",
+          "properties": {
+            "indirect": { "type": "number" },
+            "direct": { "type": "number" },
+            "total": { "type": "number" }
+          }
+        }
+      },
+      "required": ["projectId", "discipline", "date", "authorId", "status"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile with role and project assignments.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "User's full name" },
+        "email": { "type": "string", "description": "User's email" },
+        "role": { "type": "string", "enum": ["Admin", "Logistics", "Supervisor", "HSE", "QC", "HR", "Procurement", "Document Control", "Mechanic & Electrical", "Project Control", "CC", "CM", "Project Manager", "General Manpower", "Engineering", "campbos", "Permit Officer", "Paramedic", "Super Admin", "Subcontractor Super Admin"], "description": "Legacy single role" },
+        "roles": { 
+          "type": "array", 
+          "items": { "type": "string", "enum": ["Admin", "Logistics", "Supervisor", "HSE", "QC", "HR", "Procurement", "Document Control", "Mechanic & Electrical", "Project Control", "CC", "CM", "Project Manager", "General Manpower", "Engineering", "campbos", "Permit Officer", "Paramedic", "Super Admin", "Subcontractor Super Admin"] },
+          "description": "Multiple user roles"
+        },
+        "projects": { "type": "array", "items": { "type": "string" }, "description": "List of assigned project IDs" }
+      },
+      "required": ["name", "email", "role"]
+    },
+    "MaterialRequest": {
+      "title": "Material Request",
+      "description": "Material request (SPB) for a project.",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string", "description": "ID of the project" },
+        "date": { "type": "string", "format": "date", "description": "Request date" },
+        "spbNo": { "type": "string", "description": "SPB Number" },
+        "spbName": { "type": "string", "description": "SPB Name" },
+        "itemName": { "type": "string", "description": "Material item name" },
+        "unit": { "type": "string", "description": "Unit of measurement" },
+        "volumeSPB": { "type": "number", "description": "Volume in SPB" },
+        "totalVolume": { "type": "number", "description": "Total volume purchased" },
+        "totalPrice": { "type": "number", "description": "Total price" },
+        "used": { "type": "number", "description": "Volume used" },
+        "remaining": { "type": "number", "description": "Volume remaining" },
+        "location": { "type": "string", "enum": ["Sorong", "Jakarta"], "description": "Material location" },
+        "status": { "type": "string", "enum": ["Proses", "Done"], "description": "Request status" },
+        "pic": { "type": "string", "description": "Person in charge" },
+        "remarks": { "type": "string", "description": "Additional remarks" },
+        "approval": {
+          "type": "object",
+          "properties": {
+            "cm": { "type": "boolean" },
+            "cc": { "type": "boolean" },
+            "pm": { "type": "boolean" }
+          }
+        },
+        "workItem": { "type": "string", "description": "Item pekerjaan" },
+        "area": { "type": "string", "description": "Area lokasi" },
+        "vendor": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "usedWorkItem": { "type": "string" },
+        "usedArea": { "type": "string" },
+        "usedDiscipline": { "type": "string" },
+        "usedPhotoUrl": { "type": "string" }
+      },
+      "required": ["projectId", "date", "spbNo", "itemName", "status"]
+    },
+    "QCMaterialRequest": {
+      "title": "QC Material Request",
+      "description": "Material request initiated by QC, approved by Project Control.",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string", "description": "ID of the project" },
+        "date": { "type": "string", "format": "date", "description": "Request date" },
+        "itemName": { "type": "string", "description": "Material item name" },
+        "unit": { "type": "string", "description": "Unit of measurement" },
+        "volume": { "type": "number", "description": "Requested volume" },
+        "requestedBy": { "type": "string", "description": "UID of the QC requester" },
+        "requestedByName": { "type": "string", "description": "Name of the QC requester" },
+        "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected", "Approved by CC", "Approved by CM"], "description": "Request status" },
+        "approvals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": { "type": "string" },
+              "status": { "type": "string" },
+              "approvedBy": { "type": "string" },
+              "approvedByName": { "type": "string" },
+              "approvalDate": { "type": "string" },
+              "signature": { "type": "string" },
+              "remarks": { "type": "string" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "spbNo": { "type": "string", "description": "SPB Number (if linked)" },
+        "workItem": { "type": "string" },
+        "area": { "type": "string" },
+        "discipline": { "type": "string" },
+        "remarks": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "pdfUrl": { "type": "string" }
+      },
+      "required": ["projectId", "date", "itemName", "unit", "volume", "requestedBy", "status"]
+    },
+    "QCFolder": {
+      "title": "QC Folder",
+      "description": "Folder for organizing QC project files.",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string", "description": "ID of the project" },
+        "name": { "type": "string", "description": "Folder name" },
+        "parentId": { "type": "string", "description": "ID of the parent folder (null for root)" },
+        "createdBy": { "type": "string", "description": "UID of the creator" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "deleteRequested": { "type": "boolean" },
+        "deleteRequestedBy": { "type": "string" },
+        "deleteRequestedByName": { "type": "string" },
+        "deleteRequestedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["projectId", "name", "createdBy"]
+    },
+    "QCFile": {
+      "title": "QC File",
+      "description": "QC project file uploaded by users.",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string", "description": "ID of the project" },
+        "folderId": { "type": "string", "description": "ID of the folder (null for root)" },
+        "name": { "type": "string", "description": "File name" },
+        "url": { "type": "string", "description": "File storage URL" },
+        "type": { "type": "string", "description": "MIME type" },
+        "size": { "type": "number", "description": "File size in bytes" },
+        "uploadedBy": { "type": "string", "description": "UID of the uploader" },
+        "uploadedByName": { "type": "string", "description": "Name of the uploader" },
+        "uploadedAt": { "type": "string", "format": "date-time", "description": "Upload timestamp" },
+        "deleteRequested": { "type": "boolean" },
+        "deleteRequestedBy": { "type": "string" },
+        "deleteRequestedByName": { "type": "string" },
+        "deleteRequestedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["projectId", "name", "url", "uploadedBy"]
+    },
+    "QCNotification": {
+      "title": "QC Notification",
+      "description": "Notification for QC dashboard users.",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["DeletionRequest", "Approval", "Rejection", "MaterialRequest"] },
+        "link": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["projectId", "userId", "title", "message", "type", "read", "createdAt"]
+    },
+    "AttendanceRecord": {
+      "title": "Attendance Record",
+      "description": "Attendance record for General Manpower.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "projectId": { "type": "string" },
+        "projectName": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "location": {
+          "type": "object",
+          "properties": {
+            "latitude": { "type": "number" },
+            "longitude": { "type": "number" }
+          }
+        },
+        "photo": { "type": "string", "description": "Base64 photo" },
+        "type": { "type": "string", "enum": ["Check-in", "Check-out"] },
+        "locationId": { "type": "string" },
+        "locationName": { "type": "string" },
+        "deviceId": { "type": "string" },
+        "manpowerDetails": {
+          "type": "object",
+          "properties": {
+            "position": { "type": "string" },
+            "email": { "type": "string" },
+            "classification": { "type": "string" }
+          }
+        }
+      },
+      "required": ["userId", "projectId", "date", "timestamp", "location", "photo", "type"]
+    },
+    "AttendanceLocation": {
+      "title": "Attendance Location",
+      "description": "Valid attendance location with radius and allowed manpower.",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "name": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "radius": { "type": "number" },
+        "allowedManpowerIds": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["projectId", "name", "latitude", "longitude", "radius"]
+    },
+    "Manpower": {
+      "title": "Manpower",
+      "description": "Master data for project personnel.",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "manpowerId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "position": { "type": "string" },
+        "classification": { "type": "string", "enum": ["Direct", "Indirect"] },
+        "siteStatus": { "type": "string", "enum": ["On Site", "Off Site"] },
+        "activeStatus": { "type": "string", "enum": ["Active", "Resign"] },
+        "mcuStatus": { "type": "string" },
+        "mcuExpiry": { "type": "string", "format": "date" },
+        "pointOfHire": { "type": "string" },
+        "entryPermitStatus": { "type": "string" },
+        "entryPermitExpiry": { "type": "string", "format": "date" },
+        "contractStart": { "type": "string", "format": "date" },
+        "contractEnd": { "type": "string", "format": "date" },
+        "certificate": { "type": "string" },
+        "leaveStart": { "type": "string", "format": "date" },
+        "leaveEnd": { "type": "string", "format": "date" },
+        "photoUrl": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["projectId", "manpowerId", "name", "email", "position", "classification", "siteStatus", "activeStatus"]
+    }
+  },
+  "firestore": {
+    "/projects/{projectId}": {
+      "schema": "Project",
+      "description": "Collection of projects."
+    },
+    "/reports/{reportId}": {
+      "schema": "DailyReport",
+      "description": "Collection of daily reports."
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Collection of user profiles."
+    },
+    "/materialRequests/{requestId}": {
+      "schema": "MaterialRequest",
+      "description": "Collection of material requests."
+    },
+    "/qcMaterialRequests/{requestId}": {
+      "schema": "QCMaterialRequest",
+      "description": "Collection of QC material requests."
+    },
+    "/qcFolders/{folderId}": {
+      "schema": "QCFolder",
+      "description": "Collection of QC project folders."
+    },
+    "/qcFiles/{fileId}": {
+      "schema": "QCFile",
+      "description": "Collection of QC project files."
+    },
+    "/qcNotifications/{notificationId}": {
+      "schema": "QCNotification",
+      "description": "Collection of QC notifications."
+    },
+    "/attendance/{attendanceId}": {
+      "schema": "AttendanceRecord",
+      "description": "Collection of attendance records."
+    },
+    "/attendanceLocations/{locationId}": {
+      "schema": "AttendanceLocation",
+      "description": "Collection of valid attendance locations."
+    },
+    "/manpower/{manpowerId}": {
+      "schema": "Manpower",
+      "description": "Collection of project personnel master data."
+    }
+  }
+}

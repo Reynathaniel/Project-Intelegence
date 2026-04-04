@@ -1,0 +1,407 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.get('email', '').lower() in [
+          "secrettrader011200@gmail.com",
+          "tikacntyas@gmail.com",
+          "svrnstcourse@gmail.com",
+          "bowow0012@gmail.com"
+        ] ||
+        request.auth.uid in [
+          "kaqJMY4CqqggA6hqg6r7sTtXykA2",
+          "AILGZPzKFBdpzYFZR27wI9icac53"
+        ]
+      );
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        isSuperAdmin() || 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'Admin' ||
+          'Admin' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('roles', [])
+        ))
+      );
+    }
+
+    function isProjectMember(projectId) {
+      return isAuthenticated() && (
+        isAdmin() || 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         projectId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('projects', []))
+      );
+    }
+
+    function hasRole(role) {
+      return isAuthenticated() && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == role ||
+          role in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('roles', [])
+        ))
+      );
+    }
+
+    function isPrivileged() {
+      return isAuthenticated() && (
+        isSuperAdmin() || 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') in ['Admin', 'Super Admin', 'Project Control', 'Project Manager'] ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('roles', []).hasAny(['Admin', 'Super Admin', 'Project Control', 'Project Manager'])
+        ))
+      );
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['name', 'email', 'role']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.email is string && data.email.size() > 0 && data.email.size() < 200 &&
+             data.role in ['Admin', 'Logistics', 'Supervisor', 'HSE', 'QC', 'HR', 'Procurement', 'Document Control', 'Mechanic & Electrical', 'Project Control', 'CC', 'CM', 'Project Manager', 'General Manpower', 'Engineering', 'campbos', 'Permit Officer', 'Paramedic', 'Super Admin', 'Subcontractor Super Admin'] &&
+             (!('roles' in data) || (data.roles is list && data.roles.size() < 20)) &&
+             (!('projects' in data) || (data.projects is list && data.projects.size() < 100));
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll(['name', 'status', 'managerId']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.status in ['Active', 'Completed', 'On Hold'] &&
+             data.managerId is string && data.managerId.size() < 100 &&
+             (!('description' in data) || (data.description is string && data.description.size() < 1000)) &&
+             (!('location' in data) || (data.location is string && data.location.size() < 200));
+    }
+
+    function isValidHSE(hse) {
+      return hse is map &&
+             (!('safetyInduction' in hse) || hse.safetyInduction is number) &&
+             (!('toolboxMeeting' in hse) || hse.toolboxMeeting is number) &&
+             (!('safetyPatrol' in hse) || hse.safetyPatrol is number) &&
+             (!('safetyMeeting' in hse) || hse.safetyMeeting is number) &&
+             (!('unsafeAction' in hse) || hse.unsafeAction is number) &&
+             (!('unsafeCondition' in hse) || hse.unsafeCondition is number) &&
+             (!('nearMiss' in hse) || hse.nearMiss is number) &&
+             (!('accident' in hse) || hse.accident is number) &&
+             (!('p3k' in hse) || hse.p3k is number) &&
+             (!('apd' in hse) || hse.apd is number) &&
+             (!('rambu' in hse) || hse.rambu is number) &&
+             (!('others' in hse) || hse.others is number);
+    }
+
+    function isValidReport(data) {
+      return data.keys().hasAll(['projectId', 'discipline', 'date', 'authorId', 'status']) &&
+             data.projectId is string && data.projectId.size() < 100 &&
+             data.discipline in ['Admin', 'Logistics', 'Supervisor', 'HSE', 'QC', 'HR', 'Procurement', 'Document Control', 'Mechanic & Electrical', 'Project Control', 'CC', 'CM', 'Project Manager', 'General Manpower', 'Engineering', 'campbos', 'Permit Officer', 'Paramedic', 'Super Admin', 'Subcontractor Super Admin'] &&
+             data.date is string && data.date.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
+             data.authorId is string &&
+             data.status in ['Draft', 'Submitted'] &&
+             (!('data' in data) || (data.data is string && data.data.size() < 100000)) &&
+             (!('hse' in data) || isValidHSE(data.hse));
+    }
+
+    function isValidManpower(data) {
+      return data.keys().hasAll(['projectId', 'manpowerId', 'name', 'email', 'position', 'classification', 'siteStatus', 'activeStatus']) &&
+             data.projectId is string &&
+             data.manpowerId is string &&
+             data.name is string &&
+             data.email is string &&
+             data.position is string &&
+             data.classification in ['Direct', 'Indirect'] &&
+             data.siteStatus in ['On Site', 'Off Site'] &&
+             data.activeStatus in ['Active', 'Resign'];
+    }
+
+    function isValidMaterialRequest(data) {
+      return data.keys().hasAll(['projectId', 'date', 'spbNo', 'itemName', 'status']) &&
+             data.projectId is string && data.projectId.size() < 100 &&
+             data.date is string && data.date.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
+             data.spbNo is string && data.spbNo.size() < 100 &&
+             data.itemName is string && data.itemName.size() < 200 &&
+             data.status in ['Proses', 'Done', 'Pending Approval', 'Rejected'] &&
+             (!('remarks' in data) || (data.remarks is string && data.remarks.size() < 1000)) &&
+             (!('approval' in data) || (
+               data.approval is map && 
+               data.approval.get('cm', false) is bool &&
+               data.approval.get('cc', false) is bool &&
+               data.approval.get('pm', false) is bool
+             ));
+    }
+
+    function isValidMaterialReceipt(data) {
+      return data.keys().hasAll(['projectId', 'date', 'itemName', 'volume']) &&
+             data.projectId is string && data.projectId.size() < 100 &&
+             data.date is string && data.date.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
+             data.itemName is string && data.itemName.size() < 200 &&
+             data.volume is number;
+    }
+
+    function isValidMaterialUsage(data) {
+      return data.keys().hasAll(['projectId', 'date', 'itemName', 'volume']) &&
+             data.projectId is string && data.projectId.size() < 100 &&
+             data.date is string && data.date.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
+             data.itemName is string && data.itemName.size() < 200 &&
+             data.volume is number;
+    }
+
+    function isValidQCMaterialRequest(data) {
+      return data.keys().hasAll(['projectId', 'date', 'itemName', 'unit', 'volume', 'requestedBy', 'status']) &&
+             data.projectId is string && data.projectId.size() < 100 &&
+             data.date is string && data.date.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
+             data.itemName is string && data.itemName.size() < 200 &&
+             data.unit is string && data.unit.size() < 50 &&
+             data.volume is number &&
+             data.requestedBy == request.auth.uid &&
+             data.status in ['Pending', 'Approved', 'Rejected', 'Approved by CC', 'Approved by CM'] &&
+             (!('costControlApproval' in data) || data.costControlApproval in ['Pending', 'Approved', 'Rejected']);
+    }
+
+    function isValidQCFolder(data) {
+      return data.keys().hasAll(['projectId', 'name', 'createdBy']) &&
+             data.projectId is string && data.projectId.size() < 100 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.createdBy is string &&
+             (!('deleteRequested' in data) || data.deleteRequested is bool);
+    }
+
+    function isValidQCFile(data) {
+      return data.keys().hasAll(['projectId', 'name', 'url', 'uploadedBy']) &&
+             data.projectId is string && data.projectId.size() < 100 &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.url is string && data.url.size() < 2000000 && // Base64 images can be large
+             data.uploadedBy is string &&
+             (!('deleteRequested' in data) || data.deleteRequested is bool);
+    }
+
+    function isValidQCNotification(data) {
+      return data.keys().hasAll(['projectId', 'userId', 'title', 'message', 'type', 'read', 'createdAt']) &&
+             data.projectId is string &&
+             data.userId is string &&
+             data.title is string &&
+             data.message is string &&
+             data.type in ['DeletionRequest', 'Approval', 'Rejection', 'MaterialRequest', 'alert', 'ReportDeleted'] &&
+             data.read is bool;
+    }
+
+    function isValidAttendance(data) {
+      return data.keys().hasAll(['userId', 'projectId', 'date', 'timestamp', 'location', 'photo', 'type']) &&
+             data.userId == request.auth.uid &&
+             data.projectId is string &&
+             data.date is string &&
+             data.timestamp is string &&
+             data.location is map &&
+             data.location.latitude is number &&
+             data.location.longitude is number &&
+             data.photo is string &&
+             data.type in ['Check-in', 'Check-out'] &&
+             (!('manpowerDetails' in data) || (
+               data.manpowerDetails is map &&
+               data.manpowerDetails.get('position', '') is string &&
+               data.manpowerDetails.get('email', '') is string &&
+               data.manpowerDetails.get('classification', '') is string
+             ));
+    }
+
+    function isValidAttendanceLocation(data) {
+      return data.keys().hasAll(['projectId', 'name', 'latitude', 'longitude', 'radius']) &&
+             data.projectId is string &&
+             data.name is string &&
+             data.latitude is number &&
+             data.longitude is number &&
+             data.radius is number &&
+             (!('allowedManpowerIds' in data) || (data.allowedManpowerIds is list && data.allowedManpowerIds.size() < 1000));
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    // Attendance Locations collection
+    match /attendanceLocations/{locationId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow list: if isAuthenticated();
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isValidUser(request.resource.data) && (
+        (request.resource.data.role != 'Admin' && !('Admin' in request.resource.data.get('roles', []))) || 
+        isSuperAdmin()
+      );
+      allow update: if isAuthenticated() && (isSuperAdmin() || (
+        (request.auth.uid == userId || isAdmin()) && (
+          isSuperAdmin() ||
+          (isAdmin() && 
+           resource.data.role != 'Admin' && 
+           !('Admin' in resource.data.get('roles', [])) && 
+           request.resource.data.role != 'Admin' && 
+           !('Admin' in request.resource.data.get('roles', []))) ||
+          (request.auth.uid == userId && 
+           request.resource.data.role == resource.data.role && 
+           request.resource.data.get('roles', []) == resource.data.get('roles', []))
+        )
+      ));
+      allow delete: if isAdmin();
+    }
+
+    // Projects collection
+    match /projects/{projectId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Reports collection
+    match /reports/{reportId} {
+      allow read: if isAuthenticated() && (
+        isPrivileged() || 
+        isProjectMember(resource.data.projectId)
+      );
+      allow create: if isAuthenticated() && 
+                      isValidReport(request.resource.data) && 
+                      (request.resource.data.authorId == request.auth.uid && hasRole(request.resource.data.discipline));
+      allow update: if isAuthenticated() && 
+                      isValidReport(request.resource.data) && 
+                      ((resource.data.authorId == request.auth.uid && hasRole(resource.data.discipline)) || isPrivileged());
+      allow delete: if isAuthenticated() && (
+        (resource.data.authorId == request.auth.uid && hasRole(resource.data.discipline)) || 
+        isPrivileged()
+      );
+    }
+
+    // Manpower collection
+    match /manpower/{manpowerId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        isProjectMember(resource.data.projectId) ||
+        hasRole('HR') ||
+        (resource.data.email == request.auth.token.email)
+      );
+      allow create: if isAuthenticated() && (isAdmin() || hasRole('HR')) && isValidManpower(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || hasRole('HR')) && isValidManpower(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // Material Requests collection
+    match /materialRequests/{requestId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        isProjectMember(resource.data.projectId) ||
+        hasRole('Logistics')
+      );
+      allow create: if isAuthenticated() && (isAdmin() || hasRole('Logistics') || hasRole('Supervisor')) && isValidMaterialRequest(request.resource.data);
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        isProjectMember(resource.data.projectId) ||
+        hasRole('Logistics') ||
+        hasRole('Project Control') ||
+        hasRole('CC') ||
+        hasRole('CM') ||
+        hasRole('Project Manager')
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Material Receipts collection
+    match /materialReceipts/{receiptId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        isProjectMember(resource.data.projectId) ||
+        hasRole('Logistics')
+      );
+      allow create: if isAuthenticated() && (isAdmin() || hasRole('Logistics')) && isValidMaterialReceipt(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || hasRole('Logistics'));
+      allow delete: if isAdmin();
+    }
+
+    // Material Usages collection
+    match /materialUsages/{usageId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        isProjectMember(resource.data.projectId) ||
+        hasRole('Logistics')
+      );
+      allow create: if isAuthenticated() && (isAdmin() || hasRole('Logistics')) && isValidMaterialUsage(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || hasRole('Logistics'));
+      allow delete: if isAdmin();
+    }
+
+    // QC Material Requests collection
+    match /qcMaterialRequests/{requestId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        isProjectMember(resource.data.projectId) ||
+        hasRole('Logistics') ||
+        hasRole('QC')
+      );
+      allow create: if isAuthenticated() && (isAdmin() || hasRole('QC')) && isValidQCMaterialRequest(request.resource.data);
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        hasRole('Project Control') ||
+        hasRole('CC') ||
+        hasRole('CM') ||
+        hasRole('Project Manager') ||
+        ((isAdmin() || hasRole('QC')) && resource.data.status == 'Pending')
+      );
+      allow delete: if isAdmin();
+    }
+
+    // QC Folders collection
+    match /qcFolders/{folderId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        isProjectMember(resource.data.projectId) ||
+        hasRole('QC')
+      );
+      allow create: if isAuthenticated() && (isAdmin() || hasRole('QC')) && isValidQCFolder(request.resource.data);
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        hasRole('QC') || 
+        hasRole('Project Control')
+      );
+      allow delete: if isAuthenticated() && (isAdmin() || hasRole('Project Control'));
+    }
+
+    // QC Files collection
+    match /qcFiles/{fileId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || 
+        isProjectMember(resource.data.projectId) ||
+        hasRole('QC')
+      );
+      allow create: if isAuthenticated() && (isAdmin() || hasRole('QC')) && isValidQCFile(request.resource.data);
+      allow update: if isAuthenticated() && (
+        isAdmin() || 
+        hasRole('QC') || 
+        hasRole('Project Control')
+      );
+      allow delete: if isAuthenticated() && (isAdmin() || hasRole('Project Control'));
+    }
+
+    // QC Notifications collection
+    match /qcNotifications/{notificationId} {
+      allow read: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // Attendance collection
+    match /attendance/{attendanceId} {
+      allow read: if isAuthenticated() && (isAdmin() || resource.data.userId == request.auth.uid || hasRole('HR'));
+      allow create: if isAuthenticated() && isValidAttendance(request.resource.data);
+      allow update: if false;
+      allow delete: if isAdmin() || hasRole('HR');
+    }
+
+  }
+}

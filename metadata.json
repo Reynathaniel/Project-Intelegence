@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Remix: Remix: Remix: Remix: Remix: REY-COMMAND: Project Control Nexus",
+  "description": "A comprehensive multi-project control and planning dashboard for Reynathaniel Dhika Anggara, enabling sub-disciplines (Logistics, Supervisor, HSE, QC, HR) to track daily reports and generate automated PDF project reports.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
