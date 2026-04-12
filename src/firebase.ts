@@ -1,23 +1,51 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { getFirestore, doc, getDoc, getDocs, collection, query, where, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc, serverTimestamp, getDocFromServer, increment, arrayUnion, orderBy, limit } from 'firebase/firestore';
+import { initializeFirestore, memoryLocalCache, doc, getDoc, getDocs, collection, query, where, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc, serverTimestamp, getDocFromServer, increment, arrayUnion, orderBy, limit } from 'firebase/firestore';
 import firebaseConfigFromJson from '../firebase-applet-config.json';
+
+// Helper to get config value with fallback
+const getConfigValue = (key: string, jsonVal: string) => {
+  const envVal = import.meta.env[key];
+  if (envVal && typeof envVal === 'string' && envVal.trim() !== '') {
+    return envVal;
+  }
+  return jsonVal;
+};
 
 // Support environment variables for Vercel deployment
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseConfigFromJson.apiKey,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfigFromJson.authDomain,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseConfigFromJson.projectId,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfigFromJson.storageBucket,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfigFromJson.messagingSenderId,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || firebaseConfigFromJson.appId,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || firebaseConfigFromJson.measurementId,
-  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID || firebaseConfigFromJson.firestoreDatabaseId
+  apiKey: getConfigValue('VITE_FIREBASE_API_KEY', firebaseConfigFromJson.apiKey),
+  authDomain: getConfigValue('VITE_FIREBASE_AUTH_DOMAIN', firebaseConfigFromJson.authDomain),
+  projectId: getConfigValue('VITE_FIREBASE_PROJECT_ID', firebaseConfigFromJson.projectId),
+  storageBucket: getConfigValue('VITE_FIREBASE_STORAGE_BUCKET', firebaseConfigFromJson.storageBucket),
+  messagingSenderId: getConfigValue('VITE_FIREBASE_MESSAGING_SENDER_ID', firebaseConfigFromJson.messagingSenderId),
+  appId: getConfigValue('VITE_FIREBASE_APP_ID', firebaseConfigFromJson.appId),
+  measurementId: getConfigValue('VITE_FIREBASE_MEASUREMENT_ID', firebaseConfigFromJson.measurementId),
+  firestoreDatabaseId: getConfigValue('VITE_FIREBASE_DATABASE_ID', firebaseConfigFromJson.firestoreDatabaseId)
 };
+
+if (import.meta.env.DEV) {
+  console.log('Firebase Initialization:', {
+    projectId: firebaseConfig.projectId,
+    databaseId: firebaseConfig.firestoreDatabaseId,
+    authDomain: firebaseConfig.authDomain,
+    hasApiKey: !!firebaseConfig.apiKey,
+    appId: firebaseConfig.appId
+  });
+}
 
 // Initialize Firebase SDK
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+// Initialize Firestore with memory cache to avoid IndexedDB issues in iframes
+const dbId = (firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)' && firebaseConfig.firestoreDatabaseId !== '') 
+  ? firebaseConfig.firestoreDatabaseId 
+  : undefined;
+
+export const db = initializeFirestore(app, {
+  localCache: memoryLocalCache()
+}, dbId);
+
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
