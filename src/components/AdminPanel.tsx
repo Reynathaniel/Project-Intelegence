@@ -3,7 +3,7 @@ import { Project, UserProfile, UserRole, DailyReport, AttendanceRecord } from '.
 import { db, collection, addDoc, getDocs, updateDoc, doc, query, where, handleFirestoreError, OperationType, deleteDoc, orderBy, limit } from '../firebase';
 import { compressImage } from '../services/imageService';
 import { isSuperAdmin } from '../constants';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Users, Briefcase, ShieldAlert, CheckCircle2, XCircle, ChevronRight, UserPlus, Settings, ShieldCheck, Search, Trash2, Edit2, ArrowUpCircle, ArrowDownCircle, Clock, Mail, MapPin } from 'lucide-react';
 import { 
   BarChart, 

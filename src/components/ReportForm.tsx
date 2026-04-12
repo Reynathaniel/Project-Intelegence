@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Project, UserProfile, UserRole, DailyReport, MaterialRequest } from '../types';
 import { db, collection, addDoc, updateDoc, doc, serverTimestamp, handleFirestoreError, OperationType, query, where, onSnapshot, getDocs, increment, arrayUnion } from '../firebase';
 import { compressImage } from '../services/imageService';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { X, Send, Save, AlertCircle, Plus, Fuel, Truck, ArrowDownCircle, ArrowUpCircle, Eye, FileText, Settings, ClipboardCheck, UserCheck, Camera, Repeat, Users, Search, Shield, ShieldAlert } from 'lucide-react';
 import { generateProjectReport } from '../services/pdfService';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'motion/react';
 
 interface ReportFormProps {
   project: Project;

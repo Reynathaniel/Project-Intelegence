@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Project, DailyReport, HRPersonnel } from '../types';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { 
   Users, 
   UserCheck, 

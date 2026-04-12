@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Project, MaterialRequest, DailyReport, UserProfile } from '../types';
 import { db, collection, query, where, onSnapshot, addDoc, updateDoc, doc, handleFirestoreError, OperationType } from '../firebase';
 import { compressImage } from '../services/imageService';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Truck, 
   Plus, 

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { FirebaseUser, db, collection, query, where, onSnapshot, addDoc, serverTimestamp, handleFirestoreError, OperationType, deleteDoc, doc } from '../firebase';
 import { UserProfile, Project, DailyReport, UserRole } from '../types';
 import { isSuperAdmin } from '../constants';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   LayoutDashboard, 
   Briefcase, 

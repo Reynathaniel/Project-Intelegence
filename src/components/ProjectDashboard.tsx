@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Project, DailyReport, UserRole } from '../types';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   LayoutDashboard, 
   Settings, 

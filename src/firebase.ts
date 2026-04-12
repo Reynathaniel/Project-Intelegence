@@ -18,20 +18,18 @@ const firebaseConfig = {
 // Use the prioritized config
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore with memory cache and auto-detect long polling
-// Auto-detect is often more robust than forcing long polling in various network environments
-const dbId = (firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)') 
-  ? firebaseConfig.firestoreDatabaseId 
-  : undefined;
+// Initialize Firestore with memory cache and forced long polling
+// We use the default database as a fallback if the named one is not responding
+const dbId = undefined; // Force default database for troubleshooting
 
 if (import.meta.env.DEV) {
-  console.log('Firestore Database ID being used:', dbId || '(default)');
+  console.log('Firestore: Forcing (default) database and long polling for troubleshooting');
 }
 
 export const db = initializeFirestore(app, {
   localCache: memoryLocalCache(),
-  experimentalAutoDetectLongPolling: true,
-}, dbId);
+  experimentalForceLongPolling: true,
+});
 
 // Explicitly enable network to ensure we're not in offline mode
 enableNetwork(db).catch(err => console.error('Failed to enable network:', err));

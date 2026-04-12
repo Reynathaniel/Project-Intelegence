@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Project, DailyReport, QCFolder, QCFile, UserProfile, QCNotification } from '../types';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   ClipboardCheck, 
   CheckCircle2, 

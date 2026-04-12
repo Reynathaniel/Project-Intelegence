@@ -8,7 +8,7 @@ import { auth, onAuthStateChanged, db, doc, getDoc, setDoc, FirebaseUser, google
 import { UserProfile, UserRole } from './types';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Loader2 } from 'lucide-react';
 import { isSuperAdmin } from './constants';
 

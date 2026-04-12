@@ -14,7 +14,7 @@ import {
   addDoc
 } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from '../firebase';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   DollarSign, 
   ClipboardCheck, 

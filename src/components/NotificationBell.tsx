@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db, collection, query, where, onSnapshot, updateDoc, doc, handleFirestoreError, OperationType } from '../firebase';
 import { Bell, X, Check, Trash2, AlertCircle, Info, CheckCircle2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface Notification {
   id: string;

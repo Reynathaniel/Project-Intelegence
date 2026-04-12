@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Project, QCMaterialRequest, UserProfile, MaterialRequest, UserRole, ApprovalStep } from '../types';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, 
   Package, 

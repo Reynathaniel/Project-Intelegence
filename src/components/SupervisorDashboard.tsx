@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Project, DailyReport, SupervisorData } from '../types';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { 
   TrendingUp, 
   TrendingDown, 

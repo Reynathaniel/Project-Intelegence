@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { DailyReport, UserRole } from '../types';
 import { isSuperAdmin } from '../constants';
 import { FileText, User, Calendar, Tag, ChevronRight, CheckCircle2, Clock, Edit2, Trash2, AlertTriangle, X as CloseIcon, Info } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface ReportListProps {
   reports: DailyReport[];

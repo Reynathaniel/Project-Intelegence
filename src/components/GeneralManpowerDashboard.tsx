@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import Webcam from 'react-webcam';
 import { FirebaseUser, db, collection, addDoc, serverTimestamp, handleFirestoreError, OperationType, query, where, orderBy, limit, onSnapshot } from '../firebase';
 import { UserProfile, Project, AttendanceRecord, AttendanceLocation, HRPersonnel } from '../types';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Camera, MapPin, CheckCircle2, Loader2, History, Clock, LogOut, X, AlertCircle, ShieldCheck, Info } from 'lucide-react';
 
 interface GeneralManpowerDashboardProps {
