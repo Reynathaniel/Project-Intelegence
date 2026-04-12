@@ -9,7 +9,7 @@ import { UserProfile, UserRole } from './types';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
 import { motion, AnimatePresence } from 'motion/react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Shield } from 'lucide-react';
 import { isSuperAdmin } from './constants';
 
 export default function App() {
@@ -18,10 +18,13 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [loginLoading, setLoginLoading] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
+      setError(null);
+      
       if (firebaseUser) {
         setUser(firebaseUser);
         try {
@@ -73,11 +76,15 @@ export default function App() {
               await setDoc(doc(db, 'users', firebaseUser.uid), newProfile);
               setProfile(newProfile);
             } catch (err) {
-              handleFirestoreError(err, OperationType.CREATE, `users/${firebaseUser.uid}`);
+              const errMessage = err instanceof Error ? err.message : String(err);
+              setError(`Failed to create profile: ${errMessage}`);
+              console.error('Profile creation error:', err);
             }
           }
         } catch (err) {
-          handleFirestoreError(err, OperationType.GET, `users/${firebaseUser.uid}`);
+          const errMessage = err instanceof Error ? err.message : String(err);
+          setError(`Failed to load profile: ${errMessage}`);
+          console.error('Profile loading error:', err);
         }
       } else {
         setUser(null);
@@ -106,6 +113,7 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
+      setError(null);
       await signOut(auth);
     } catch (error) {
       console.error('Logout failed:', error);
@@ -146,6 +154,36 @@ export default function App() {
       <AnimatePresence mode="wait">
         {!user ? (
           <Login onLogin={handleLogin} isLoading={loginLoading} />
+        ) : error ? (
+          <div className="flex items-center justify-center min-h-[100dvh] bg-neutral-950 p-4">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="w-full max-w-md p-8 border border-red-500/20 bg-neutral-900 rounded-2xl text-center space-y-6"
+            >
+              <div className="p-4 bg-red-500/10 rounded-full w-fit mx-auto border border-red-500/20">
+                <Shield className="w-12 h-12 text-red-500" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-xl font-bold text-white">Connection Error</h2>
+                <p className="text-sm text-neutral-400 font-mono break-words">{error}</p>
+              </div>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => window.location.reload()}
+                  className="w-full py-3 bg-white text-black font-bold rounded-xl hover:bg-neutral-200 transition-colors"
+                >
+                  RETRY CONNECTION
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full py-3 bg-neutral-800 text-white font-bold rounded-xl hover:bg-neutral-700 transition-colors"
+                >
+                  SIGN OUT
+                </button>
+              </div>
+            </motion.div>
+          </div>
         ) : (
           profile && <Dashboard user={user} profile={profile} onLogout={handleLogout} />
         )}

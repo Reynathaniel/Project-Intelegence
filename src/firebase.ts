@@ -28,7 +28,8 @@ if (import.meta.env.DEV) {
     projectId: firebaseConfig.projectId,
     authDomain: firebaseConfig.authDomain,
     databaseId: dbId || '(default)',
-    appId: firebaseConfig.appId
+    appId: firebaseConfig.appId,
+    online: navigator.onLine
   });
 }
 
@@ -37,8 +38,10 @@ export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
 }, dbId);
 
-// Explicitly enable network to ensure we're not in offline mode
-enableNetwork(db).catch(err => console.error('Failed to enable network:', err));
+// Explicitly enable network and handle potential errors
+enableNetwork(db).catch(err => {
+  console.warn('Firestore: Failed to enable network initially:', err);
+});
 
 if (import.meta.env.DEV) {
   window.addEventListener('online', () => console.log('Browser: Online'));
