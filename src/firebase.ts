@@ -3,14 +3,35 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChang
 import { initializeFirestore, memoryLocalCache, doc, getDoc, getDocs, collection, query, where, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc, serverTimestamp, getDocFromServer, increment, arrayUnion, orderBy, limit, enableNetwork } from 'firebase/firestore';
 import firebaseConfigFromJson from '../firebase-applet-config.json';
 
-// Use the provisioned config directly
-const app = initializeApp(firebaseConfigFromJson);
+// Support environment variables for Vercel deployment, fallback to JSON config
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseConfigFromJson.apiKey,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfigFromJson.authDomain,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseConfigFromJson.projectId,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfigFromJson.storageBucket,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfigFromJson.messagingSenderId,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || firebaseConfigFromJson.appId,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || firebaseConfigFromJson.measurementId,
+  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID || firebaseConfigFromJson.firestoreDatabaseId
+};
 
-// Initialize Firestore with memory cache and the specific database ID provisioned
+// Use the prioritized config
+const app = initializeApp(firebaseConfig);
+
+// Initialize Firestore with memory cache and auto-detect long polling
+// Auto-detect is often more robust than forcing long polling in various network environments
+const dbId = (firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)') 
+  ? firebaseConfig.firestoreDatabaseId 
+  : undefined;
+
+if (import.meta.env.DEV) {
+  console.log('Firestore Database ID being used:', dbId || '(default)');
+}
+
 export const db = initializeFirestore(app, {
   localCache: memoryLocalCache(),
-  experimentalForceLongPolling: true,
-}, firebaseConfigFromJson.firestoreDatabaseId);
+  experimentalAutoDetectLongPolling: true,
+}, dbId);
 
 // Explicitly enable network to ensure we're not in offline mode
 enableNetwork(db).catch(err => console.error('Failed to enable network:', err));
