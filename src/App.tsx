@@ -24,9 +24,27 @@ export default function App() {
       if (firebaseUser) {
         setUser(firebaseUser);
         try {
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          // Load user profile with retry logic for "offline" errors
+          let userDoc;
+          let retries = 0;
+          const maxRetries = 3;
           
-          if (userDoc.exists()) {
+          while (retries < maxRetries) {
+            try {
+              userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+              break;
+            } catch (err: any) {
+              if (err.message.includes('offline') && retries < maxRetries - 1) {
+                retries++;
+                console.warn(`Firestore fetch failed (offline), retrying... (${retries}/${maxRetries})`);
+                await new Promise(resolve => setTimeout(resolve, 1000 * retries));
+                continue;
+              }
+              throw err;
+            }
+          }
+          
+          if (userDoc && userDoc.exists()) {
             const data = { id: userDoc.id, ...userDoc.data() } as UserProfile;
             // Migration: Ensure roles array exists
             if (!data.roles) {
