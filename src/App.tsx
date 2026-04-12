@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { auth, onAuthStateChanged, db, doc, getDoc, setDoc, FirebaseUser, googleProvider, signInWithPopup, signOut, handleFirestoreError, OperationType } from './firebase';
+import { auth, onAuthStateChanged, db, doc, getDoc, getDocFromServer, setDoc, FirebaseUser, googleProvider, signInWithPopup, signOut, handleFirestoreError, OperationType } from './firebase';
 import { UserProfile, UserRole } from './types';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
@@ -24,6 +24,9 @@ export default function App() {
       if (firebaseUser) {
         setUser(firebaseUser);
         try {
+          // Add a larger initial delay to allow Firestore network to stabilize
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
           // Load user profile with retry logic for "offline" errors
           let userDoc;
           let retries = 0;
@@ -31,7 +34,8 @@ export default function App() {
           
           while (retries < maxRetries) {
             try {
-              userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+              // Use getDocFromServer to force a real network request
+              userDoc = await getDocFromServer(doc(db, 'users', firebaseUser.uid));
               break;
             } catch (err: any) {
               if (err.message.includes('offline') && retries < maxRetries - 1) {

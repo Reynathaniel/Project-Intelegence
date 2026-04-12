@@ -18,21 +18,28 @@ const firebaseConfig = {
 // Use the prioritized config
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore with memory cache and forced long polling
-// We use the default database as a fallback if the named one is not responding
-const dbId = undefined; // Force default database for troubleshooting
+// Initialize Firestore with memory cache and auto-detect long polling
+const dbId = (firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)') 
+  ? firebaseConfig.firestoreDatabaseId 
+  : undefined;
 
 if (import.meta.env.DEV) {
-  console.log('Firestore: Forcing (default) database and long polling for troubleshooting');
+  console.log('Firestore: Using database ID:', dbId || '(default)');
 }
 
 export const db = initializeFirestore(app, {
   localCache: memoryLocalCache(),
   experimentalForceLongPolling: true,
-});
+}, dbId);
 
 // Explicitly enable network to ensure we're not in offline mode
 enableNetwork(db).catch(err => console.error('Failed to enable network:', err));
+
+if (import.meta.env.DEV) {
+  window.addEventListener('online', () => console.log('Browser: Online'));
+  window.addEventListener('offline', () => console.log('Browser: Offline'));
+  console.log('Browser initial status:', navigator.onLine ? 'Online' : 'Offline');
+}
 
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
@@ -154,6 +161,7 @@ export {
   deleteDoc, 
   addDoc, 
   serverTimestamp,
+  getDocFromServer,
   increment,
   arrayUnion,
   orderBy,
