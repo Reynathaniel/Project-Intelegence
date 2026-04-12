@@ -37,13 +37,14 @@ if (import.meta.env.DEV) {
 // Initialize Firebase SDK
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore with memory cache to avoid IndexedDB issues in iframes
+// Initialize Firestore with memory cache and long polling to avoid IndexedDB/WebSocket issues in iframes
 const dbId = (firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)' && firebaseConfig.firestoreDatabaseId !== '') 
   ? firebaseConfig.firestoreDatabaseId 
   : undefined;
 
 export const db = initializeFirestore(app, {
-  localCache: memoryLocalCache()
+  localCache: memoryLocalCache(),
+  experimentalForceLongPolling: true
 }, dbId);
 
 export const auth = getAuth(app);
@@ -103,11 +104,27 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 
 // Test connection
 async function testConnection() {
+  if (import.meta.env.DEV) {
+    console.log('Testing Firestore connection...');
+  }
   try {
+    // Try to get a document from the server to verify connectivity
     await getDocFromServer(doc(db, 'test', 'connection'));
+    if (import.meta.env.DEV) {
+      console.log('Firestore connection test: SUCCESS');
+    }
   } catch (error) {
-    if(error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration. ");
+    if (error instanceof Error) {
+      if (error.message.includes('the client is offline')) {
+        console.error("Firestore Error: Client is offline. This usually means the connection was blocked or the database ID is incorrect.");
+      } else if (error.message.includes('permission-denied')) {
+        // Permission denied is actually a good sign - it means we reached the server!
+        if (import.meta.env.DEV) {
+          console.log('Firestore connection test: REACHED SERVER (Permission Denied as expected)');
+        }
+      } else {
+        console.error("Firestore connection test: FAILED", error.message);
+      }
     }
   }
 }
