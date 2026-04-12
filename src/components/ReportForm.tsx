@@ -260,6 +260,7 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
   const [hrEntryType, setHrEntryType] = useState<'add' | 'update' | null>(null);
   const [editingMetric, setEditingMetric] = useState<string | null>(null);
   const [metricSearchQuery, setMetricSearchQuery] = useState('');
+  const [activeSearchEntry, setActiveSearchEntry] = useState<number | null>(null);
 
   useEffect(() => {
     if (!project.id) return;
@@ -2547,16 +2548,24 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
                                   <input 
                                     type="text" 
                                     placeholder="Search manpower..."
-                                    value={entry.manpowerName ? `${entry.manpowerName} (${entry.manpowerId})` : metricSearchQuery}
+                                    value={activeSearchEntry === entryIdx ? metricSearchQuery : (entry.manpowerName ? `${entry.manpowerName} (${entry.manpowerId})` : '')}
+                                    onFocus={() => {
+                                      setActiveSearchEntry(entryIdx);
+                                      setMetricSearchQuery('');
+                                    }}
                                     onChange={(e) => {
-                                      if (entry.manpowerId) {
-                                        // Clear selection if user starts typing
-                                        const newEntries = [...formData[editingMetric].entries];
-                                        newEntries[entryIdx].manpowerId = '';
-                                        newEntries[entryIdx].manpowerName = '';
-                                        setFormData({ ...formData, [editingMetric]: { entries: newEntries } });
-                                      }
                                       setMetricSearchQuery(e.target.value);
+                                      if (entry.manpowerId) {
+                                        const newEntries = [...formData[editingMetric].entries];
+                                        newEntries[entryIdx] = { 
+                                          ...newEntries[entryIdx], 
+                                          manpowerId: '', 
+                                          manpowerName: '',
+                                          position: '',
+                                          classification: ''
+                                        };
+                                        setFormData({ ...formData, [editingMetric]: { ...formData[editingMetric], entries: newEntries } });
+                                      }
                                     }}
                                     className="w-full bg-neutral-900 border border-neutral-700 rounded-xl pl-10 pr-4 py-3 text-xs text-white focus:border-emerald-500 transition-all outline-none"
                                   />
@@ -2565,10 +2574,16 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
                                       type="button"
                                       onClick={() => {
                                         const newEntries = [...formData[editingMetric].entries];
-                                        newEntries[entryIdx].manpowerId = '';
-                                        newEntries[entryIdx].manpowerName = '';
-                                        setFormData({ ...formData, [editingMetric]: { entries: newEntries } });
+                                        newEntries[entryIdx] = { 
+                                          ...newEntries[entryIdx], 
+                                          manpowerId: '', 
+                                          manpowerName: '',
+                                          position: '',
+                                          classification: ''
+                                        };
+                                        setFormData({ ...formData, [editingMetric]: { ...formData[editingMetric], entries: newEntries } });
                                         setMetricSearchQuery('');
+                                        setActiveSearchEntry(null);
                                       }}
                                       className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-neutral-800 rounded-full"
                                     >
@@ -2578,7 +2593,7 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
                                 </div>
                                 
                                 {/* Search Results Dropdown */}
-                                {!entry.manpowerId && metricSearchQuery.length >= 2 && (
+                                {activeSearchEntry === entryIdx && !entry.manpowerId && metricSearchQuery.length >= 2 && (
                                   <div className="absolute z-20 top-full left-0 right-0 mt-2 bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl overflow-hidden">
                                     {allManpower
                                       .filter(m => 
@@ -2592,12 +2607,16 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
                                           type="button"
                                           onClick={() => {
                                             const newEntries = [...formData[editingMetric].entries];
-                                            newEntries[entryIdx].manpowerId = m.manpowerId;
-                                            newEntries[entryIdx].manpowerName = m.name;
-                                            newEntries[entryIdx].position = m.position;
-                                            newEntries[entryIdx].classification = m.classification;
-                                            setFormData({ ...formData, [editingMetric]: { entries: newEntries } });
+                                            newEntries[entryIdx] = {
+                                              ...newEntries[entryIdx],
+                                              manpowerId: m.manpowerId,
+                                              manpowerName: m.name,
+                                              position: m.position,
+                                              classification: m.classification
+                                            };
+                                            setFormData({ ...formData, [editingMetric]: { ...formData[editingMetric], entries: newEntries } });
                                             setMetricSearchQuery('');
+                                            setActiveSearchEntry(null);
                                           }}
                                           className="w-full px-4 py-3 text-left hover:bg-neutral-800 flex items-center justify-between border-b border-neutral-800 last:border-0"
                                         >
@@ -2701,8 +2720,10 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
                                         type="button"
                                         onClick={() => {
                                           const newEntries = [...formData[editingMetric].entries];
-                                          newEntries[entryIdx].photos.splice(photoIdx, 1);
-                                          setFormData({ ...formData, [editingMetric]: { entries: newEntries } });
+                                          const newPhotos = [...(newEntries[entryIdx].photos || [])];
+                                          newPhotos.splice(photoIdx, 1);
+                                          newEntries[entryIdx] = { ...newEntries[entryIdx], photos: newPhotos };
+                                          setFormData({ ...formData, [editingMetric]: { ...formData[editingMetric], entries: newEntries } });
                                         }}
                                         className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover/photo:opacity-100 transition-opacity"
                                       >
@@ -2724,18 +2745,20 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
                                     </button>
                                     <input 
                                       type="file" 
+                                      multiple
                                       onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) {
+                                        const files = Array.from(e.target.files || []);
+                                        files.forEach(file => {
                                           const reader = new FileReader();
                                           reader.onload = (event) => {
                                             const base64 = event.target?.result as string;
                                             const newEntries = [...formData[editingMetric].entries];
-                                            newEntries[entryIdx].files = [...(newEntries[entryIdx].files || []), { name: file.name, data: base64 }];
-                                            setFormData({ ...formData, [editingMetric]: { entries: newEntries } });
+                                            const newFiles = [...(newEntries[entryIdx].files || []), { name: file.name, data: base64 }];
+                                            newEntries[entryIdx] = { ...newEntries[entryIdx], files: newFiles };
+                                            setFormData({ ...formData, [editingMetric]: { ...formData[editingMetric], entries: newEntries } });
                                           };
                                           reader.readAsDataURL(file);
-                                        }
+                                        });
                                       }}
                                       className="absolute inset-0 opacity-0 cursor-pointer" 
                                     />
@@ -2752,8 +2775,10 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
                                         type="button"
                                         onClick={() => {
                                           const newEntries = [...formData[editingMetric].entries];
-                                          newEntries[entryIdx].files.splice(fileIdx, 1);
-                                          setFormData({ ...formData, [editingMetric]: { entries: newEntries } });
+                                          const newFiles = [...(newEntries[entryIdx].files || [])];
+                                          newFiles.splice(fileIdx, 1);
+                                          newEntries[entryIdx] = { ...newEntries[entryIdx], files: newFiles };
+                                          setFormData({ ...formData, [editingMetric]: { ...formData[editingMetric], entries: newEntries } });
                                         }}
                                         className="p-1 text-neutral-500 hover:text-red-500 transition-colors"
                                       >
@@ -4505,7 +4530,7 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
                                   const newList = [...formData.activities];
                                   const newPhotos = [...(newList[index].photos || [])];
                                   newPhotos[pIdx] = { ...newPhotos[pIdx], url: base64 };
-                                  newList[index].photos = newPhotos;
+                                  newList[index] = { ...newList[index], photos: newPhotos };
                                   setFormData({ ...formData, activities: newList });
                                 })}
                                 className="absolute inset-0 opacity-0 cursor-pointer"
@@ -4564,7 +4589,10 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
                                   if (!newList[index].overtime) newList[index].overtime = { hours: 0, manpower: 0, manpowerList: [], heavyEquipment: [], photos: [] };
                                   const newPhotos = [...(newList[index].overtime.photos || [])];
                                   newPhotos[pIdx] = { ...newPhotos[pIdx], url: base64 };
-                                  newList[index].overtime.photos = newPhotos;
+                                  newList[index] = { 
+                                    ...newList[index], 
+                                    overtime: { ...newList[index].overtime, photos: newPhotos } 
+                                  };
                                   setFormData({ ...formData, activities: newList });
                                 })}
                                 className="absolute inset-0 opacity-0 cursor-pointer"
