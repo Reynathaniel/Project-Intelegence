@@ -1,54 +1,19 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { initializeFirestore, memoryLocalCache, doc, getDoc, getDocs, collection, query, where, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc, serverTimestamp, getDocFromServer, increment, arrayUnion, orderBy, limit } from 'firebase/firestore';
+import { initializeFirestore, memoryLocalCache, doc, getDoc, getDocs, collection, query, where, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc, serverTimestamp, getDocFromServer, increment, arrayUnion, orderBy, limit, enableNetwork } from 'firebase/firestore';
 import firebaseConfigFromJson from '../firebase-applet-config.json';
 
-// Support environment variables for Vercel deployment, fallback to JSON config
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseConfigFromJson.apiKey,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfigFromJson.authDomain,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseConfigFromJson.projectId,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfigFromJson.storageBucket,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfigFromJson.messagingSenderId,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || firebaseConfigFromJson.appId,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || firebaseConfigFromJson.measurementId,
-  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID || firebaseConfigFromJson.firestoreDatabaseId
-};
+// Use the provisioned config directly
+const app = initializeApp(firebaseConfigFromJson);
 
-if (import.meta.env.DEV) {
-  console.log('Firebase Initialization:', {
-    projectId: firebaseConfig.projectId,
-    databaseId: firebaseConfig.firestoreDatabaseId,
-    hasApiKey: !!firebaseConfig.apiKey,
-  });
-}
-
-// Initialize Firebase SDK
-const app = initializeApp(firebaseConfig);
-
-// Initialize Firestore with memory cache and long polling to avoid IndexedDB/WebSocket issues in iframes
-const dbId = (firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)' && firebaseConfig.firestoreDatabaseId !== '') 
-  ? firebaseConfig.firestoreDatabaseId 
-  : undefined;
-
-if (import.meta.env.DEV) {
-  console.log('Firestore Database ID:', dbId || '(default)');
-  console.log('Browser Online Status:', navigator.onLine ? 'ONLINE' : 'OFFLINE');
-}
-
-// Use initializeFirestore to apply settings
+// Initialize Firestore with memory cache and the specific database ID provisioned
 export const db = initializeFirestore(app, {
   localCache: memoryLocalCache(),
   experimentalForceLongPolling: true,
-  host: 'firestore.googleapis.com',
-  ssl: true
-}, dbId);
+}, firebaseConfigFromJson.firestoreDatabaseId);
 
-// Monitor connectivity
-if (typeof window !== 'undefined') {
-  window.addEventListener('online', () => console.log('Browser went ONLINE'));
-  window.addEventListener('offline', () => console.log('Browser went OFFLINE'));
-}
+// Explicitly enable network to ensure we're not in offline mode
+enableNetwork(db).catch(err => console.error('Failed to enable network:', err));
 
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
@@ -105,16 +70,37 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
-// Test connection
+// Test connection with a small delay
 async function testConnection() {
+  // Wait a bit for SDK to settle
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  
   if (import.meta.env.DEV) {
     console.log('Testing Firestore connection...');
   }
   try {
     // Try to get a document from the server to verify connectivity
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    const testDocRef = doc(db, 'test', 'connection');
+    await getDocFromServer(testDocRef);
+    
     if (import.meta.env.DEV) {
-      console.log('Firestore connection test: SUCCESS');
+      console.log('Firestore connection test: SUCCESS (Read)');
+    }
+
+    // Also try a write to be sure (this will fail with permission denied if not authenticated, which is fine)
+    try {
+      await setDoc(testDocRef, { lastCheck: serverTimestamp() });
+      if (import.meta.env.DEV) {
+        console.log('Firestore connection test: SUCCESS (Write)');
+      }
+    } catch (e: any) {
+      if (e.message.includes('permission-denied')) {
+        if (import.meta.env.DEV) {
+          console.log('Firestore connection test: REACHED SERVER (Write Permission Denied as expected)');
+        }
+      } else {
+        throw e;
+      }
     }
   } catch (error) {
     if (error instanceof Error) {

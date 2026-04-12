@@ -233,24 +233,8 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow list: if isAuthenticated();
-      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
-      allow create: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && isValidUser(request.resource.data) && (
-        (request.resource.data.role != 'Admin' && !('Admin' in request.resource.data.get('roles', []))) || 
-        isSuperAdmin()
-      );
-      allow update: if isAuthenticated() && (isSuperAdmin() || (
-        (request.auth.uid == userId || isAdmin()) && (
-          isSuperAdmin() ||
-          (isAdmin() && 
-           resource.data.role != 'Admin' && 
-           !('Admin' in resource.data.get('roles', [])) && 
-           request.resource.data.role != 'Admin' && 
-           !('Admin' in request.resource.data.get('roles', []))) ||
-          (request.auth.uid == userId && 
-           request.resource.data.role == resource.data.role && 
-           request.resource.data.get('roles', []) == resource.data.get('roles', []))
-        )
-      ));
+      allow create: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
       allow delete: if isAdmin();
     }
 
@@ -401,6 +385,12 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isValidAttendance(request.resource.data);
       allow update: if false;
       allow delete: if isAdmin() || hasRole('HR');
+    }
+
+    // Test collection for connection health checks
+    match /test/connection {
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
 
   }
