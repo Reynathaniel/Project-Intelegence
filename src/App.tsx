@@ -17,6 +17,7 @@ export default function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [loginLoading, setLoginLoading] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -30,7 +31,7 @@ export default function App() {
           // Load user profile with retry logic for "offline" errors
           let userDoc;
           let retries = 0;
-          const maxRetries = 3;
+          const maxRetries = 5; // Increased retries
           
           while (retries < maxRetries) {
             try {
@@ -41,7 +42,7 @@ export default function App() {
               if (err.message.includes('offline') && retries < maxRetries - 1) {
                 retries++;
                 console.warn(`Firestore fetch failed (offline), retrying... (${retries}/${maxRetries})`);
-                await new Promise(resolve => setTimeout(resolve, 1000 * retries));
+                await new Promise(resolve => setTimeout(resolve, 2000 * retries));
                 continue;
               }
               throw err;
@@ -117,10 +118,24 @@ export default function App() {
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center gap-4"
+          className="flex flex-col items-center gap-6"
         >
           <Loader2 className="w-12 h-12 animate-spin text-emerald-500" />
-          <p className="text-xl font-mono tracking-widest uppercase">Initializing REY-COMMAND...</p>
+          <div className="text-center space-y-2">
+            <p className="text-xl font-mono tracking-widest uppercase">Initializing REY-COMMAND...</p>
+            <p className="text-xs text-neutral-500 font-mono">Verifying secure connection to Firestore</p>
+          </div>
+          
+          {/* Show retry button if loading takes too long */}
+          <motion.button
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 10 }}
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-xs font-mono text-neutral-400 hover:text-white hover:border-neutral-700 transition-colors"
+          >
+            Connection taking too long? Click to reload
+          </motion.button>
         </motion.div>
       </div>
     );

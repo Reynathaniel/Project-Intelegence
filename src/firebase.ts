@@ -24,7 +24,12 @@ const dbId = (firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreData
   : undefined;
 
 if (import.meta.env.DEV) {
-  console.log('Firestore: Using database ID:', dbId || '(default)');
+  console.log('Firestore: Initializing with Config:', {
+    projectId: firebaseConfig.projectId,
+    authDomain: firebaseConfig.authDomain,
+    databaseId: dbId || '(default)',
+    appId: firebaseConfig.appId
+  });
 }
 
 export const db = initializeFirestore(app, {
