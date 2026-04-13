@@ -1,4 +1,122 @@
-export type UserRole = 'Admin' | 'Logistics' | 'Supervisor' | 'HSE' | 'QC' | 'HR' | 'Procurement' | 'Document Control' | 'Mechanic & Electrical' | 'Project Control' | 'CC' | 'CM' | 'Project Manager' | 'General Manpower' | 'Engineering' | 'campbos' | 'Permit Officer' | 'Paramedic' | 'Super Admin' | 'Subcontractor Super Admin';
+export type UserRole = 'Admin' | 'Logistics' | 'Supervisor' | 'HSE' | 'QC' | 'HR' | 'Procurement' | 'Document Control' | 'Mechanic & Electrical' | 'Project Control' | 'CC' | 'CM' | 'Project Manager' | 'Project Director' | 'General Manpower' | 'Engineering' | 'campbos' | 'Permit Officer' | 'Paramedic' | 'Super Admin' | 'Subcontractor Super Admin';
+
+export interface PMScheduleItem {
+  id: string;
+  projectId: string;
+  no: number;
+  activity: string;
+  duration: number;
+  start: string;
+  finish: string;
+  predecessor: string;
+  resource: string;
+  remark: string;
+  isCritical: boolean;
+}
+
+export interface PMCostItem {
+  id: string;
+  projectId: string;
+  item: string;
+  budgetCost: number;
+  actualCost: number;
+  variance: number;
+  progress: number;
+  costProgressRatio: number;
+}
+
+export interface PMCashFlowItem {
+  id: string;
+  projectId: string;
+  period: string;
+  plannedProgress: number;
+  actualProgress: number;
+  plannedCost: number;
+  actualCost: number;
+  cumulativeCost: number;
+}
+
+export interface PMProcurementItem {
+  id: string;
+  projectId: string;
+  material: string;
+  status: string;
+  poDate: string;
+  deliveryDate: string;
+  delay: number;
+  riskLevel: 'Low' | 'Medium' | 'High';
+}
+
+export interface PMContractClaimItem {
+  id: string;
+  projectId: string;
+  issue: string;
+  type: 'Delay' | 'Variation';
+  responsible: string;
+  eot: number;
+  costClaim: number;
+  status: string;
+}
+
+export interface PMDashboardSummary {
+  overallProgress: number;
+  scheduleStatus: 'Ahead' | 'Delay' | 'On Track';
+  costStatus: 'Under Budget' | 'Over Budget' | 'On Budget';
+  criticalIssues: string[];
+  cashFlowHealth: string;
+  procurementRiskLevel: string;
+  claimPotentialValue: number;
+  claimPotentialTime: number;
+}
+
+export interface PMAnalysis {
+  schedule: {
+    criticalPath: string;
+    delayCauses: string;
+  };
+  cost: {
+    overrunSource: string;
+    profitRisk: string;
+  };
+  procurement: {
+    materialDelaysImpact: string;
+  };
+  contract: {
+    eotEntitlement: string;
+    ldRisk: string;
+  };
+}
+
+export interface PMActionPlan {
+  immediate: string[];
+  strategic: string[];
+  recovery: string;
+  costOptimization: string;
+}
+
+export interface PMForecast {
+  estimatedCompletionDate: string;
+  eac: number;
+  profitLossProjection: number;
+}
+
+export interface PMScenario {
+  bestCase: string;
+  mostLikely: string;
+  worstCase: string;
+}
+
+export interface PMIntelligence {
+  id: string;
+  projectId: string;
+  date: string;
+  summary: PMDashboardSummary;
+  analysis: PMAnalysis;
+  actionPlan: PMActionPlan;
+  forecast: PMForecast;
+  scenarios: PMScenario;
+  createdAt: any;
+}
 
 export interface UserProfile {
   id: string;

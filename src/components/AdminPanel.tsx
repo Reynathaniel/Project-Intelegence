@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Project, UserProfile, UserRole, DailyReport, AttendanceRecord } from '../types';
 import { db, collection, addDoc, getDocs, updateDoc, doc, query, where, handleFirestoreError, OperationType, deleteDoc, orderBy, limit } from '../firebase';
 import { compressImage } from '../services/imageService';
+import { seedPMData } from '../services/pmService';
 import { isSuperAdmin } from '../constants';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Users, Briefcase, ShieldAlert, CheckCircle2, XCircle, ChevronRight, UserPlus, Settings, ShieldCheck, Search, Trash2, Edit2, ArrowUpCircle, ArrowDownCircle, Clock, Mail, MapPin } from 'lucide-react';
+import { Plus, Users, Briefcase, ShieldAlert, CheckCircle2, XCircle, ChevronRight, UserPlus, Settings, ShieldCheck, Search, Trash2, Edit2, ArrowUpCircle, ArrowDownCircle, Clock, Mail, MapPin, Zap } from 'lucide-react';
 import { 
   BarChart, 
   Bar, 
@@ -47,6 +48,7 @@ export default function AdminPanel({ projects, users: initialUsers, currentUserE
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [userDeleteConfirm, setUserDeleteConfirm] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [seedingId, setSeedingId] = useState<string | null>(null);
   const [userForm, setUserForm] = useState({
     name: '',
     email: '',
@@ -77,6 +79,18 @@ export default function AdminPanel({ projects, users: initialUsers, currentUserE
       setDeleteConfirm(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `projects/${projectId}`);
+    }
+  };
+
+  const handleSeedPMData = async (projectId: string) => {
+    setSeedingId(projectId);
+    try {
+      await seedPMData(projectId);
+      setError(null);
+    } catch (err) {
+      setError('Failed to seed PM intelligence data.');
+    } finally {
+      setSeedingId(null);
     }
   };
 
@@ -403,6 +417,14 @@ export default function AdminPanel({ projects, users: initialUsers, currentUserE
                       title="Delete Project"
                     >
                       <Trash2 className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => handleSeedPMData(project.id)}
+                      disabled={seedingId === project.id}
+                      className={`p-2 rounded-lg transition-all ${seedingId === project.id ? 'bg-emerald-500/20 text-emerald-500 animate-pulse' : 'hover:bg-emerald-500/10 text-neutral-600 hover:text-emerald-400'}`}
+                      title="Seed PM Intelligence Data"
+                    >
+                      <Zap className={`w-4 h-4 ${seedingId === project.id ? 'animate-bounce' : ''}`} />
                     </button>
                   </div>
                 </div>

@@ -293,6 +293,88 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["projectId", "manpowerId", "name", "email", "position", "classification", "siteStatus", "activeStatus"]
+    },
+    "PMScheduleItem": {
+      "title": "PM Schedule Item",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "no": { "type": "number" },
+        "activity": { "type": "string" },
+        "duration": { "type": "number" },
+        "start": { "type": "string", "format": "date" },
+        "finish": { "type": "string", "format": "date" },
+        "predecessor": { "type": "string" },
+        "resource": { "type": "string" },
+        "remark": { "type": "string" },
+        "isCritical": { "type": "boolean" }
+      }
+    },
+    "PMCostItem": {
+      "title": "PM Cost Item",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "item": { "type": "string" },
+        "budgetCost": { "type": "number" },
+        "actualCost": { "type": "number" },
+        "variance": { "type": "number" },
+        "progress": { "type": "number" },
+        "costProgressRatio": { "type": "number" }
+      }
+    },
+    "PMCashFlowItem": {
+      "title": "PM Cash Flow Item",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "period": { "type": "string" },
+        "plannedProgress": { "type": "number" },
+        "actualProgress": { "type": "number" },
+        "plannedCost": { "type": "number" },
+        "actualCost": { "type": "number" },
+        "cumulativeCost": { "type": "number" }
+      }
+    },
+    "PMProcurementItem": {
+      "title": "PM Procurement Item",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "material": { "type": "string" },
+        "status": { "type": "string" },
+        "poDate": { "type": "string", "format": "date" },
+        "deliveryDate": { "type": "string", "format": "date" },
+        "delay": { "type": "number" },
+        "riskLevel": { "type": "string", "enum": ["Low", "Medium", "High"] }
+      }
+    },
+    "PMContractClaimItem": {
+      "title": "PM Contract Claim Item",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "issue": { "type": "string" },
+        "type": { "type": "string", "enum": ["Delay", "Variation"] },
+        "responsible": { "type": "string" },
+        "eot": { "type": "number" },
+        "costClaim": { "type": "number" },
+        "status": { "type": "string" }
+      }
+    },
+    "PMIntelligence": {
+      "title": "PM Intelligence",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "summary": { "type": "object" },
+        "analysis": { "type": "object" },
+        "actionPlan": { "type": "object" },
+        "forecast": { "type": "object" },
+        "scenarios": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "firestore": {
@@ -339,6 +421,30 @@
     "/manpower/{manpowerId}": {
       "schema": "Manpower",
       "description": "Collection of project personnel master data."
+    },
+    "/pmSchedules/{itemId}": {
+      "schema": "PMScheduleItem",
+      "description": "Collection of PM schedule items."
+    },
+    "/pmCosts/{itemId}": {
+      "schema": "PMCostItem",
+      "description": "Collection of PM cost items."
+    },
+    "/pmCashFlows/{itemId}": {
+      "schema": "PMCashFlowItem",
+      "description": "Collection of PM cash flow items."
+    },
+    "/pmProcurements/{itemId}": {
+      "schema": "PMProcurementItem",
+      "description": "Collection of PM procurement items."
+    },
+    "/pmContractClaims/{itemId}": {
+      "schema": "PMContractClaimItem",
+      "description": "Collection of PM contract claim items."
+    },
+    "/pmIntelligence/{intelligenceId}": {
+      "schema": "PMIntelligence",
+      "description": "Collection of PM intelligence reports."
     }
   }
 }

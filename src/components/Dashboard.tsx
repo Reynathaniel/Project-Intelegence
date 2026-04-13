@@ -48,6 +48,7 @@ import ConstructionManagerDashboard from './ConstructionManagerDashboard';
 import QCDashboard from './QCDashboard';
 import QCMaterialRequests from './QCMaterialRequests';
 import GeneralManpowerDashboard from './GeneralManpowerDashboard';
+import PMDashboard from './PMDashboard';
 import { generateProjectReport } from '../services/pdfService';
 import { generateProjectExcel } from '../services/excelService';
 
@@ -91,6 +92,7 @@ export default function Dashboard({ user, profile, onLogout }: DashboardProps) {
     'CC': { label: 'Cost Control Hub', icon: <Activity className="w-5 h-5" />, view: 'cost-control' },
     'CM': { label: 'Construction Mgmt', icon: <HardHat className="w-5 h-5" />, view: 'cm' },
     'Project Manager': { label: 'Project Mgmt', icon: <Briefcase className="w-5 h-5" />, view: 'pm' },
+    'Project Director': { label: 'Director Command', icon: <ShieldCheck className="w-5 h-5" />, view: 'pm' },
     'Admin': { label: 'Command Center', icon: <ShieldCheck className="w-5 h-5" />, view: 'admin' },
   };
 
@@ -199,7 +201,8 @@ export default function Dashboard({ user, profile, onLogout }: DashboardProps) {
       case 'Project Control': return <ShieldCheck className="w-5 h-5 text-emerald-500" />;
       case 'CC': return <Activity className="w-5 h-5 text-emerald-500" />;
       case 'CM': return <HardHat className="w-5 h-5 text-blue-500" />;
-      case 'Project Manager': return <ShieldCheck className="w-5 h-5 text-emerald-500" />;
+      case 'Project Manager': return <Briefcase className="w-5 h-5 text-emerald-500" />;
+      case 'Project Director': return <ShieldCheck className="w-5 h-5 text-emerald-500" />;
       case 'General Manpower': return <UserCheck className="w-5 h-5 text-emerald-500" />;
       default: return <Activity className="w-5 h-5 text-neutral-500" />;
     }
@@ -302,7 +305,7 @@ export default function Dashboard({ user, profile, onLogout }: DashboardProps) {
       'pc': selectedProject && <div className="p-8 text-center text-neutral-500">Project Control Dashboard coming soon</div>,
       'cost-control': selectedProject && <CostControlDashboard project={selectedProject} userProfile={profile} onNavigate={(v) => setView(v as View)} />,
       'cm': selectedProject && <ConstructionManagerDashboard project={selectedProject} userProfile={profile} reports={reports} onNavigate={(v) => setView(v as View)} />,
-      'pm': selectedProject && <div className="p-8 text-center text-neutral-500">Project Manager Dashboard coming soon</div>,
+      'pm': selectedProject && <PMDashboard project={selectedProject} userProfile={profile} />,
     };
 
     return roleViewMap[view] || (
