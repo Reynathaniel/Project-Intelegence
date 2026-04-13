@@ -16,85 +16,102 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAuthResolved, setIsAuthResolved] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<string>('Initializing...');
   const [loginLoading, setLoginLoading] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let unsubscribeProfile: (() => void) | null = null;
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setLoading(true);
-      setError(null);
+      setIsAuthResolved(true);
       
-      if (firebaseUser) {
-        setUser(firebaseUser);
-        setConnectionStatus('Establishing secure connection...');
-        
-        // Use onSnapshot for the profile to handle connection fluctuations better
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        
-        const unsubscribeProfile = onSnapshot(userDocRef, async (docSnap) => {
-          try {
-            if (docSnap.exists()) {
-              const data = { id: docSnap.id, ...docSnap.data() } as UserProfile;
-              // Migration: Ensure roles array exists
-              if (!data.roles) {
-                data.roles = [data.role || 'Supervisor'];
-                await setDoc(userDocRef, { roles: data.roles }, { merge: true });
-              }
-              setProfile(data);
-              setError(null);
-              setLoading(false);
-            } else {
-              // New user setup
-              setConnectionStatus('Creating new user profile...');
-              const isOwner = isSuperAdmin(firebaseUser.email);
-              const newProfile: UserProfile = {
-                id: firebaseUser.uid,
-                name: firebaseUser.displayName || 'New User',
-                email: firebaseUser.email || '',
-                role: isOwner ? 'Super Admin' : 'Supervisor',
-                roles: [isOwner ? 'Super Admin' : 'Supervisor'],
-                projects: [],
-              };
-              await setDoc(userDocRef, newProfile);
-              // Profile state will be updated by the next snapshot
+      if (!firebaseUser) {
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+        if (unsubscribeProfile) {
+          unsubscribeProfile();
+          unsubscribeProfile = null;
+        }
+        return;
+      }
+
+      // If we already have this user and profile, don't restart
+      if (user?.uid === firebaseUser.uid && profile) {
+        setLoading(false);
+        return;
+      }
+
+      setUser(firebaseUser);
+      setConnectionStatus('Establishing secure connection...');
+      
+      const userDocRef = doc(db, 'users', firebaseUser.uid);
+      
+      if (unsubscribeProfile) unsubscribeProfile();
+
+      unsubscribeProfile = onSnapshot(userDocRef, async (docSnap) => {
+        try {
+          if (docSnap.exists()) {
+            const data = { id: docSnap.id, ...docSnap.data() } as UserProfile;
+            
+            if (!data.roles) {
+              const updatedRoles = [data.role || 'Supervisor'];
+              await setDoc(userDocRef, { roles: updatedRoles }, { merge: true });
+              data.roles = updatedRoles;
             }
-          } catch (err: any) {
+            
+            setProfile(data);
+            setError(null);
+            setLoading(false);
+          } else {
+            setConnectionStatus('Creating new user profile...');
+            const isOwner = isSuperAdmin(firebaseUser.email);
+            const newProfile: UserProfile = {
+              id: firebaseUser.uid,
+              name: firebaseUser.displayName || 'New User',
+              email: firebaseUser.email || '',
+              role: isOwner ? 'Super Admin' : 'Supervisor',
+              roles: [isOwner ? 'Super Admin' : 'Supervisor'],
+              projects: [],
+            };
+            await setDoc(userDocRef, newProfile);
+          }
+        } catch (err: any) {
+          if (!profile) {
             handleFirestoreError(err, OperationType.GET, `users/${firebaseUser.uid}`);
           }
-        }, (err) => {
-          const errStr = err.message?.toLowerCase() || '';
-          if (errStr.includes('offline') || errStr.includes('permission-denied')) {
-            setConnectionStatus('Connection pending... (Waiting for database)');
-            // Don't set a hard error yet, let it retry internally
-          } else {
-            setError(`Profile Sync Error: ${err.message}`);
-            setLoading(false);
-          }
-        });
+        }
+      }, (err) => {
+        const errStr = err.message?.toLowerCase() || '';
+        if (errStr.includes('offline') || errStr.includes('permission-denied')) {
+          setConnectionStatus('Connection pending... (Waiting for database)');
+        } else if (!profile) {
+          setError(`Profile Sync Error: ${err.message}`);
+          setLoading(false);
+        }
+      });
 
-        // Timeout for initial load
-        const timeoutId = setTimeout(() => {
-          if (loading && !profile && !error) {
+      const timeoutId = setTimeout(() => {
+        if (!profile && !error) {
+          if (!navigator.onLine) {
+            setConnectionStatus('System Offline. Waiting for internet...');
+          } else {
             setError("The connection is taking longer than expected. Please check your internet or try a 'Hard Refresh'.");
             setLoading(false);
           }
-        }, 20000);
+        }
+      }, 15000); // Slightly longer timeout for stability
 
-        return () => {
-          unsubscribeProfile();
-          clearTimeout(timeoutId);
-        };
-      } else {
-        setUser(null);
-        setProfile(null);
-      }
-      setLoading(false);
+      return () => clearTimeout(timeoutId);
     });
 
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      unsubscribe();
+      if (unsubscribeProfile) unsubscribeProfile();
+    };
+  }, [user?.uid, !!profile]);
 
   const handleLogin = async () => {
     if (loginLoading) return;
@@ -102,7 +119,6 @@ export default function App() {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error: any) {
-      // Ignore cancelled popup request errors as they are usually user-triggered
       if (error.code !== 'auth/cancelled-popup-request') {
         console.error('Login failed:', error);
       }
@@ -114,13 +130,15 @@ export default function App() {
   const handleLogout = async () => {
     try {
       setError(null);
+      setLoading(true);
       await signOut(auth);
     } catch (error) {
       console.error('Logout failed:', error);
+      setLoading(false);
     }
   };
 
-  if (loading) {
+  if (loading || !isAuthResolved) {
     return (
       <div className="flex items-center justify-center min-h-[100dvh] bg-neutral-950 text-white">
         <motion.div

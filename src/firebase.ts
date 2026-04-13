@@ -25,8 +25,26 @@ const dbId = (firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreData
 
 export const db = initializeFirestore(app, {
   localCache: memoryLocalCache(),
-  experimentalForceLongPolling: true,
+  // Removing experimentalForceLongPolling as it can sometimes cause issues with real-time updates
+  // and is often not needed if the network is properly enabled.
 }, dbId);
+
+// Test connection to Firestore
+export async function testConnection() {
+  try {
+    // Attempt to get a dummy document from the server to verify connection
+    await getDocFromServer(doc(db, '_internal_', 'connection_test'));
+    if (import.meta.env.DEV) console.log('Firestore: Connection verified');
+  } catch (error: any) {
+    if (error.message?.includes('the client is offline')) {
+      console.error("Firestore Configuration Error: The client is offline. Please check your Firebase configuration and network.");
+    }
+    // We don't throw here to allow the app to try and recover or show a custom UI
+  }
+}
+
+// Call test connection on boot
+testConnection();
 
 if (import.meta.env.DEV) {
   console.log('Firestore initialized with Database ID:', dbId || '(default)');
