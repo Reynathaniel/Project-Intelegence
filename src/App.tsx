@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { auth, onAuthStateChanged, db, doc, getDoc, getDocFromServer, setDoc, FirebaseUser, googleProvider, signInWithPopup, signOut, handleFirestoreError, OperationType } from './firebase';
+import { auth, onAuthStateChanged, db, doc, getDoc, getDocFromServer, setDoc, FirebaseUser, googleProvider, signInWithPopup, signOut, handleFirestoreError, OperationType, enableNetwork, disableNetwork, onSnapshot } from './firebase';
 import { UserProfile, UserRole } from './types';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
@@ -16,6 +16,7 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState<string>('Initializing...');
   const [loginLoading, setLoginLoading] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -27,65 +28,64 @@ export default function App() {
       
       if (firebaseUser) {
         setUser(firebaseUser);
-        try {
-          // Add a larger initial delay to allow Firestore network to stabilize
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          
-          // Load user profile with retry logic for "offline" errors
-          let userDoc;
-          let retries = 0;
-          const maxRetries = 5; // Increased retries
-          
-          while (retries < maxRetries) {
-            try {
-              // Use getDocFromServer to force a real network request
-              userDoc = await getDocFromServer(doc(db, 'users', firebaseUser.uid));
-              break;
-            } catch (err: any) {
-              if (err.message.includes('offline') && retries < maxRetries - 1) {
-                retries++;
-                console.warn(`Firestore fetch failed (offline), retrying... (${retries}/${maxRetries})`);
-                await new Promise(resolve => setTimeout(resolve, 2000 * retries));
-                continue;
+        setConnectionStatus('Establishing secure connection...');
+        
+        // Use onSnapshot for the profile to handle connection fluctuations better
+        const userDocRef = doc(db, 'users', firebaseUser.uid);
+        
+        const unsubscribeProfile = onSnapshot(userDocRef, async (docSnap) => {
+          try {
+            if (docSnap.exists()) {
+              const data = { id: docSnap.id, ...docSnap.data() } as UserProfile;
+              // Migration: Ensure roles array exists
+              if (!data.roles) {
+                data.roles = [data.role || 'Supervisor'];
+                await setDoc(userDocRef, { roles: data.roles }, { merge: true });
               }
-              throw err;
+              setProfile(data);
+              setError(null);
+              setLoading(false);
+            } else {
+              // New user setup
+              setConnectionStatus('Creating new user profile...');
+              const isOwner = isSuperAdmin(firebaseUser.email);
+              const newProfile: UserProfile = {
+                id: firebaseUser.uid,
+                name: firebaseUser.displayName || 'New User',
+                email: firebaseUser.email || '',
+                role: isOwner ? 'Super Admin' : 'Supervisor',
+                roles: [isOwner ? 'Super Admin' : 'Supervisor'],
+                projects: [],
+              };
+              await setDoc(userDocRef, newProfile);
+              // Profile state will be updated by the next snapshot
             }
+          } catch (err: any) {
+            handleFirestoreError(err, OperationType.GET, `users/${firebaseUser.uid}`);
           }
-          
-          if (userDoc && userDoc.exists()) {
-            const data = { id: userDoc.id, ...userDoc.data() } as UserProfile;
-            // Migration: Ensure roles array exists
-            if (!data.roles) {
-              data.roles = [data.role || 'Supervisor'];
-              // Update firestore with the new roles array
-              await setDoc(doc(db, 'users', firebaseUser.uid), data, { merge: true });
-            }
-            setProfile(data);
+        }, (err) => {
+          const errStr = err.message?.toLowerCase() || '';
+          if (errStr.includes('offline') || errStr.includes('permission-denied')) {
+            setConnectionStatus('Connection pending... (Waiting for database)');
+            // Don't set a hard error yet, let it retry internally
           } else {
-            // New user setup
-            const isOwner = isSuperAdmin(firebaseUser.email);
-            const newProfile: UserProfile = {
-              id: firebaseUser.uid,
-              name: firebaseUser.displayName || 'New User',
-              email: firebaseUser.email || '',
-              role: isOwner ? 'Super Admin' : 'Supervisor', // Default role
-              roles: [isOwner ? 'Super Admin' : 'Supervisor'], // Initialize roles array
-              projects: [],
-            };
-            try {
-              await setDoc(doc(db, 'users', firebaseUser.uid), newProfile);
-              setProfile(newProfile);
-            } catch (err) {
-              const errMessage = err instanceof Error ? err.message : String(err);
-              setError(`Failed to create profile: ${errMessage}`);
-              console.error('Profile creation error:', err);
-            }
+            setError(`Profile Sync Error: ${err.message}`);
+            setLoading(false);
           }
-        } catch (err) {
-          const errMessage = err instanceof Error ? err.message : String(err);
-          setError(`Failed to load profile: ${errMessage}`);
-          console.error('Profile loading error:', err);
-        }
+        });
+
+        // Timeout for initial load
+        const timeoutId = setTimeout(() => {
+          if (loading && !profile && !error) {
+            setError("The connection is taking longer than expected. Please check your internet or try a 'Hard Refresh'.");
+            setLoading(false);
+          }
+        }, 20000);
+
+        return () => {
+          unsubscribeProfile();
+          clearTimeout(timeoutId);
+        };
       } else {
         setUser(null);
         setProfile(null);
@@ -124,26 +124,43 @@ export default function App() {
     return (
       <div className="flex items-center justify-center min-h-[100dvh] bg-neutral-950 text-white">
         <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
+          initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center gap-6"
+          className="text-center space-y-6 max-w-sm px-6"
         >
-          <Loader2 className="w-12 h-12 animate-spin text-emerald-500" />
-          <div className="text-center space-y-2">
-            <p className="text-xl font-mono tracking-widest uppercase">Initializing REY-COMMAND...</p>
-            <p className="text-xs text-neutral-500 font-mono">Verifying secure connection to Firestore</p>
+          <div className="relative w-24 h-24 mx-auto">
+            <div className="absolute inset-0 border-4 border-emerald-500/10 rounded-full"></div>
+            <div className="absolute inset-0 border-4 border-t-emerald-500 rounded-full animate-spin"></div>
           </div>
           
-          {/* Show retry button if loading takes too long */}
-          <motion.button
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 10 }}
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-xs font-mono text-neutral-400 hover:text-white hover:border-neutral-700 transition-colors"
-          >
-            Connection taking too long? Click to reload
-          </motion.button>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-white tracking-tight uppercase font-mono">REY-COMMAND</h2>
+            <div className="flex flex-col gap-1">
+              <p className="text-emerald-500 font-mono text-sm uppercase tracking-widest animate-pulse">
+                {connectionStatus}
+              </p>
+              <p className="text-neutral-500 font-mono text-[10px] uppercase tracking-tighter">
+                Verifying secure connection to Firestore
+              </p>
+            </div>
+          </div>
+          
+          <div className="pt-4 flex flex-col gap-3">
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full py-2 bg-neutral-900 border border-neutral-800 rounded-lg text-xs font-mono text-neutral-400 hover:text-white hover:border-neutral-700 transition-colors"
+            >
+              STUCK? RELOAD SYSTEM
+            </button>
+            {user && (
+              <button
+                onClick={handleLogout}
+                className="w-full py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-xs font-mono text-red-400 hover:bg-red-500/20 transition-colors"
+              >
+                RESET SESSION (SIGN OUT)
+              </button>
+            )}
+          </div>
         </motion.div>
       </div>
     );
@@ -170,14 +187,20 @@ export default function App() {
               </div>
               <div className="flex flex-col gap-3">
                 <button
+                  onClick={() => window.location.href = window.location.href}
+                  className="w-full py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500 transition-colors"
+                >
+                  HARD REFRESH
+                </button>
+                <button
                   onClick={() => window.location.reload()}
-                  className="w-full py-3 bg-white text-black font-bold rounded-xl hover:bg-neutral-200 transition-colors"
+                  className="w-full py-3 bg-neutral-800 text-white font-bold rounded-xl hover:bg-neutral-700 transition-colors"
                 >
                   RETRY CONNECTION
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="w-full py-3 bg-neutral-800 text-white font-bold rounded-xl hover:bg-neutral-700 transition-colors"
+                  className="w-full py-3 bg-neutral-900 text-neutral-400 font-bold rounded-xl hover:text-white transition-colors"
                 >
                   SIGN OUT
                 </button>

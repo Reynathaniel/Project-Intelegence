@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { initializeFirestore, memoryLocalCache, doc, getDoc, getDocs, collection, query, where, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc, serverTimestamp, getDocFromServer, increment, arrayUnion, orderBy, limit, enableNetwork } from 'firebase/firestore';
+import { initializeFirestore, memoryLocalCache, doc, getDoc, getDocs, collection, query, where, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc, serverTimestamp, getDocFromServer, increment, arrayUnion, orderBy, limit, enableNetwork, disableNetwork } from 'firebase/firestore';
 import firebaseConfigFromJson from '../firebase-applet-config.json';
 
 // Support environment variables for Vercel deployment, fallback to JSON config
@@ -18,33 +18,30 @@ const firebaseConfig = {
 // Use the prioritized config
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore with memory cache and auto-detect long polling
+// Initialize Firestore
 const dbId = (firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)') 
   ? firebaseConfig.firestoreDatabaseId 
   : undefined;
-
-if (import.meta.env.DEV) {
-  console.log('Firestore: Initializing with Config:', {
-    projectId: firebaseConfig.projectId,
-    authDomain: firebaseConfig.authDomain,
-    databaseId: dbId || '(default)',
-    appId: firebaseConfig.appId,
-    online: navigator.onLine
-  });
-}
 
 export const db = initializeFirestore(app, {
   localCache: memoryLocalCache(),
   experimentalForceLongPolling: true,
 }, dbId);
 
-// Explicitly enable network and handle potential errors
+if (import.meta.env.DEV) {
+  console.log('Firestore initialized with Database ID:', dbId || '(default)');
+}
+
+// Explicitly enable network
 enableNetwork(db).catch(err => {
-  console.warn('Firestore: Failed to enable network initially:', err);
+  console.warn('Firestore: Failed to enable network:', err);
 });
 
 if (import.meta.env.DEV) {
-  window.addEventListener('online', () => console.log('Browser: Online'));
+  window.addEventListener('online', () => {
+    console.log('Browser: Online - Re-enabling Firestore network');
+    enableNetwork(db).catch(() => {});
+  });
   window.addEventListener('offline', () => console.log('Browser: Offline'));
   console.log('Browser initial status:', navigator.onLine ? 'Online' : 'Offline');
 }
@@ -104,55 +101,6 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
-// Test connection with a small delay
-async function testConnection() {
-  // Wait a bit for SDK to settle
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  
-  if (import.meta.env.DEV) {
-    console.log('Testing Firestore connection...');
-  }
-  try {
-    // Try to get a document from the server to verify connectivity
-    const testDocRef = doc(db, 'test', 'connection');
-    await getDocFromServer(testDocRef);
-    
-    if (import.meta.env.DEV) {
-      console.log('Firestore connection test: SUCCESS (Read)');
-    }
-
-    // Also try a write to be sure (this will fail with permission denied if not authenticated, which is fine)
-    try {
-      await setDoc(testDocRef, { lastCheck: serverTimestamp() });
-      if (import.meta.env.DEV) {
-        console.log('Firestore connection test: SUCCESS (Write)');
-      }
-    } catch (e: any) {
-      if (e.message.includes('permission-denied')) {
-        if (import.meta.env.DEV) {
-          console.log('Firestore connection test: REACHED SERVER (Write Permission Denied as expected)');
-        }
-      } else {
-        throw e;
-      }
-    }
-  } catch (error) {
-    if (error instanceof Error) {
-      if (error.message.includes('the client is offline')) {
-        console.error("Firestore Error: Client is offline. This usually means the connection was blocked or the database ID is incorrect.");
-      } else if (error.message.includes('permission-denied')) {
-        // Permission denied is actually a good sign - it means we reached the server!
-        if (import.meta.env.DEV) {
-          console.log('Firestore connection test: REACHED SERVER (Permission Denied as expected)');
-        }
-      } else {
-        console.error("Firestore connection test: FAILED", error.message);
-      }
-    }
-  }
-}
-testConnection();
-
 export { 
   signInWithPopup, 
   signOut, 
@@ -173,6 +121,8 @@ export {
   increment,
   arrayUnion,
   orderBy,
-  limit
+  limit,
+  enableNetwork,
+  disableNetwork
 };
 export type { FirebaseUser };
