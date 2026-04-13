@@ -499,7 +499,7 @@ export default function AdminPanel({ projects, users: initialUsers, currentUserE
                 className="bg-neutral-900 border border-neutral-800 rounded-xl px-3 py-2 text-[10px] text-neutral-400 font-mono outline-none focus:border-emerald-500 transition-all"
               >
                 <option value="All">ALL ROLES</option>
-                {['Admin', 'Logistics', 'Supervisor', 'HSE', 'QC', 'HR', 'Procurement', 'Document Control', 'Mechanic & Electrical', 'Project Control', 'CC', 'CM', 'Project Manager', 'General Manpower', 'Engineering', 'campbos', 'Permit Officer', 'Paramedic', 'Super Admin', 'Subcontractor Super Admin'].map(role => (
+                {['Admin', 'Logistics', 'Supervisor', 'HSE', 'QC', 'HR', 'Procurement', 'Document Control', 'Mechanic & Electrical', 'Project Control', 'CC', 'CM', 'Project Manager', 'Project Director', 'General Manpower', 'Engineering', 'campbos', 'Permit Officer', 'Paramedic', 'Super Admin', 'Subcontractor Super Admin'].map(role => (
                   <option key={role} value={role}>{role.toUpperCase()}</option>
                 ))}
               </select>
@@ -599,7 +599,7 @@ export default function AdminPanel({ projects, users: initialUsers, currentUserE
                           }}
                         >
                           <option value="">+ ADD ROLE</option>
-                          {['Admin', 'Logistics', 'Supervisor', 'HSE', 'QC', 'HR', 'Procurement', 'Document Control', 'Mechanic & Electrical', 'Project Control', 'CC', 'CM', 'Project Manager', 'General Manpower', 'Engineering', 'campbos', 'Permit Officer', 'Paramedic', 'Super Admin', 'Subcontractor Super Admin']
+                          {['Admin', 'Logistics', 'Supervisor', 'HSE', 'QC', 'HR', 'Procurement', 'Document Control', 'Mechanic & Electrical', 'Project Control', 'CC', 'CM', 'Project Manager', 'Project Director', 'General Manpower', 'Engineering', 'campbos', 'Permit Officer', 'Paramedic', 'Super Admin', 'Subcontractor Super Admin']
                             .filter(r => !(user.roles || (user.role ? [user.role] : [])).includes(r as UserRole))
                             .map(role => (
                               <option key={role} value={role}>{role}</option>
@@ -1133,7 +1133,7 @@ export default function AdminPanel({ projects, users: initialUsers, currentUserE
                       className="bg-neutral-800 border border-neutral-700 rounded-lg px-2 py-1 text-[10px] text-white outline-none focus:border-emerald-500"
                     >
                       <option value="">+ ADD ROLE</option>
-                      {['CM', 'CC', 'Project Manager', 'QC', 'Supervisor', 'HSE', 'Logistics', 'Procurement', 'Document Control', 'Mechanic & Electrical', 'Project Control', 'Engineering', 'campbos', 'Permit Officer', 'Paramedic', 'Super Admin', 'Subcontractor Super Admin'].map(role => (
+                      {['CM', 'CC', 'Project Manager', 'Project Director', 'QC', 'Supervisor', 'HSE', 'Logistics', 'Procurement', 'Document Control', 'Mechanic & Electrical', 'Project Control', 'Engineering', 'campbos', 'Permit Officer', 'Paramedic', 'Super Admin', 'Subcontractor Super Admin'].map(role => (
                         <option key={role} value={role}>{role}</option>
                       ))}
                     </select>
@@ -1327,7 +1327,7 @@ export default function AdminPanel({ projects, users: initialUsers, currentUserE
               <div className="space-y-2">
                 <label className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest">Designations / Roles</label>
                 <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 bg-neutral-800/50 rounded-xl border border-neutral-700 custom-scrollbar">
-                  {['Admin', 'Logistics', 'Supervisor', 'HSE', 'QC', 'HR', 'Procurement', 'Document Control', 'Mechanic & Electrical', 'Project Control', 'CC', 'CM', 'Project Manager', 'General Manpower', 'Engineering', 'campbos', 'Permit Officer', 'Paramedic', 'Super Admin', 'Subcontractor Super Admin'].map(role => (
+                  {['Admin', 'Logistics', 'Supervisor', 'HSE', 'QC', 'HR', 'Procurement', 'Document Control', 'Mechanic & Electrical', 'Project Control', 'CC', 'CM', 'Project Manager', 'Project Director', 'General Manpower', 'Engineering', 'campbos', 'Permit Officer', 'Paramedic', 'Super Admin', 'Subcontractor Super Admin'].map(role => (
                     <label key={role} className="flex items-center gap-2 p-2 hover:bg-neutral-700 rounded-lg cursor-pointer transition-colors">
                       <input
                         type="checkbox"

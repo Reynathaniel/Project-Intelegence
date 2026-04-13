@@ -57,8 +57,8 @@ service cloud.firestore {
       return isAuthenticated() && (
         isSuperAdmin() || 
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') in ['Admin', 'Super Admin', 'Project Control', 'Project Manager'] ||
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('roles', []).hasAny(['Admin', 'Super Admin', 'Project Control', 'Project Manager'])
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') in ['Admin', 'Super Admin', 'Project Control', 'Project Manager', 'Project Director'] ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('roles', []).hasAny(['Admin', 'Super Admin', 'Project Control', 'Project Manager', 'Project Director'])
         ))
       );
     }
@@ -67,7 +67,7 @@ service cloud.firestore {
       return data.keys().hasAll(['name', 'email', 'role']) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
              data.email is string && data.email.size() > 0 && data.email.size() < 200 &&
-             data.role in ['Admin', 'Logistics', 'Supervisor', 'HSE', 'QC', 'HR', 'Procurement', 'Document Control', 'Mechanic & Electrical', 'Project Control', 'CC', 'CM', 'Project Manager', 'General Manpower', 'Engineering', 'campbos', 'Permit Officer', 'Paramedic', 'Super Admin', 'Subcontractor Super Admin'] &&
+             data.role in ['Admin', 'Logistics', 'Supervisor', 'HSE', 'QC', 'HR', 'Procurement', 'Document Control', 'Mechanic & Electrical', 'Project Control', 'CC', 'CM', 'Project Manager', 'Project Director', 'General Manpower', 'Engineering', 'campbos', 'Permit Officer', 'Paramedic', 'Super Admin', 'Subcontractor Super Admin'] &&
              (!('roles' in data) || (data.roles is list && data.roles.size() < 20)) &&
              (!('projects' in data) || (data.projects is list && data.projects.size() < 100));
     }
@@ -100,7 +100,7 @@ service cloud.firestore {
     function isValidReport(data) {
       return data.keys().hasAll(['projectId', 'discipline', 'date', 'authorId', 'status']) &&
              data.projectId is string && data.projectId.size() < 100 &&
-             data.discipline in ['Admin', 'Logistics', 'Supervisor', 'HSE', 'QC', 'HR', 'Procurement', 'Document Control', 'Mechanic & Electrical', 'Project Control', 'CC', 'CM', 'Project Manager', 'General Manpower', 'Engineering', 'campbos', 'Permit Officer', 'Paramedic', 'Super Admin', 'Subcontractor Super Admin'] &&
+             data.discipline in ['Admin', 'Logistics', 'Supervisor', 'HSE', 'QC', 'HR', 'Procurement', 'Document Control', 'Mechanic & Electrical', 'Project Control', 'CC', 'CM', 'Project Manager', 'Project Director', 'General Manpower', 'Engineering', 'campbos', 'Permit Officer', 'Paramedic', 'Super Admin', 'Subcontractor Super Admin'] &&
              data.date is string && data.date.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
              data.authorId is string &&
              data.status in ['Draft', 'Submitted'] &&
@@ -385,6 +385,32 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isValidAttendance(request.resource.data);
       allow update: if false;
       allow delete: if isAdmin() || hasRole('HR');
+    }
+
+    // PM Intelligence collections
+    match /pmSchedules/{id} {
+      allow read: if isAuthenticated() && (isPrivileged() || isProjectMember(resource.data.projectId));
+      allow write: if isPrivileged();
+    }
+    match /pmCosts/{id} {
+      allow read: if isAuthenticated() && (isPrivileged() || isProjectMember(resource.data.projectId));
+      allow write: if isPrivileged();
+    }
+    match /pmCashFlows/{id} {
+      allow read: if isAuthenticated() && (isPrivileged() || isProjectMember(resource.data.projectId));
+      allow write: if isPrivileged();
+    }
+    match /pmProcurements/{id} {
+      allow read: if isAuthenticated() && (isPrivileged() || isProjectMember(resource.data.projectId));
+      allow write: if isPrivileged();
+    }
+    match /pmContractClaims/{id} {
+      allow read: if isAuthenticated() && (isPrivileged() || isProjectMember(resource.data.projectId));
+      allow write: if isPrivileged();
+    }
+    match /pmIntelligence/{id} {
+      allow read: if isAuthenticated() && (isPrivileged() || isProjectMember(resource.data.projectId));
+      allow write: if isPrivileged();
     }
 
     // Test collection for connection health checks
