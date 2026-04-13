@@ -607,6 +607,7 @@ const mapOptions = {
 };
 
 function DeliveryTrackerMap({ delivery }: { delivery: LogisticsDeliverySchedule }) {
+  const [showInfo, setShowInfo] = useState(true);
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
@@ -646,6 +647,7 @@ function DeliveryTrackerMap({ delivery }: { delivery: LogisticsDeliverySchedule 
       {/* Current Location Marker */}
       <Marker
         position={center}
+        onClick={() => setShowInfo(true)}
         icon={{
           path: "M20 8v6M20 14l-2-2M20 14l2-2M11 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM16 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM4 18h16l-1-9H5l-1 9ZM7 9l1-4h8l1 4",
           fillColor: "#10b981",
@@ -655,7 +657,25 @@ function DeliveryTrackerMap({ delivery }: { delivery: LogisticsDeliverySchedule 
           scale: 1.5,
         }}
         title="Current Location"
-      />
+      >
+        {showInfo && (
+          <InfoWindow onCloseClick={() => setShowInfo(false)}>
+            <div className="p-2 min-w-[150px]">
+              <p className="text-[10px] font-bold text-neutral-900 uppercase tracking-widest mb-1">{delivery.material}</p>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-3 h-3 text-emerald-600" />
+                  <span className="text-[10px] font-medium text-neutral-700">{delivery.tracking?.locationName}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3 h-3 text-blue-600" />
+                  <span className="text-[10px] font-medium text-neutral-700">ETA: {delivery.tracking?.estimatedArrival}</span>
+                </div>
+              </div>
+            </div>
+          </InfoWindow>
+        )}
+      </Marker>
 
       {/* Destination Marker */}
       <Marker
