@@ -170,10 +170,70 @@ export async function seedLogisticsData(projectId: string) {
         { material: 'High Pressure Valves', quantity: 24, unit: 'Units', requiredDate: '2026-06-10', source: 'International (Italy)', priority: 'Medium' },
       ],
       deliverySchedule: [
-        { material: 'Main Transformer', poDate: '2026-03-01', deliveryDate: '2026-08-15', leadTime: 165, status: 'Fabrication' },
-        { material: 'Piping Spools (Batch 1)', poDate: '2026-03-15', deliveryDate: '2026-05-05', leadTime: 50, status: 'Transit' },
-        { material: 'Electrical Cables', poDate: '2026-04-01', deliveryDate: '2026-06-20', leadTime: 80, status: 'Ordered' },
-        { material: 'Foundation Bolts', poDate: '2026-02-20', deliveryDate: '2026-04-10', leadTime: 50, status: 'Delivered' },
+        { 
+          material: 'Main Transformer', 
+          poDate: '2026-03-01', 
+          deliveryDate: '2026-08-15', 
+          leadTime: 165, 
+          status: 'Fabrication',
+          tracking: {
+            currentLat: 45.4642,
+            currentLng: 9.1900, // Milan, Italy (Fabrication)
+            destinationLat: -0.8762,
+            destinationLng: 131.2558, // Sorong (Site)
+            lastUpdate: new Date().toISOString(),
+            locationName: 'Milan Fabrication Yard',
+            estimatedArrival: '2026-08-15'
+          }
+        },
+        { 
+          material: 'Piping Spools (Batch 1)', 
+          poDate: '2026-03-15', 
+          deliveryDate: '2026-05-05', 
+          leadTime: 50, 
+          status: 'Transit',
+          tracking: {
+            currentLat: 1.3521,
+            currentLng: 103.8198, // Singapore Port (Transit)
+            destinationLat: -0.8762,
+            destinationLng: 131.2558,
+            lastUpdate: new Date().toISOString(),
+            locationName: 'Port of Singapore',
+            estimatedArrival: '2026-05-05'
+          }
+        },
+        { 
+          material: 'Electrical Cables', 
+          poDate: '2026-04-01', 
+          deliveryDate: '2026-06-20', 
+          leadTime: 80, 
+          status: 'Ordered',
+          tracking: {
+            currentLat: -6.2088,
+            currentLng: 106.8456, // Jakarta (Ordered)
+            destinationLat: -0.8762,
+            destinationLng: 131.2558,
+            lastUpdate: new Date().toISOString(),
+            locationName: 'Jakarta Distribution Center',
+            estimatedArrival: '2026-06-20'
+          }
+        },
+        { 
+          material: 'Foundation Bolts', 
+          poDate: '2026-02-20', 
+          deliveryDate: '2026-04-10', 
+          leadTime: 50, 
+          status: 'Delivered',
+          tracking: {
+            currentLat: -0.8762,
+            currentLng: 131.2558, // Sorong (Delivered)
+            destinationLat: -0.8762,
+            destinationLng: 131.2558,
+            lastUpdate: new Date().toISOString(),
+            locationName: 'Project Site Warehouse',
+            estimatedArrival: '2026-04-10'
+          }
+        },
       ],
       transportAnalysis: [
         { item: 'Aggregates (Quarry to Site)', distance: 45, cycleTime: 3.5, fleetRequired: '10x Dump Trucks', tripsPerDay: 25 },

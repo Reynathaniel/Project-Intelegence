@@ -133,6 +133,15 @@ export interface LogisticsDeliverySchedule {
   deliveryDate: string;
   leadTime: number; // days
   status: 'Ordered' | 'Fabrication' | 'Transit' | 'Delivered';
+  tracking?: {
+    currentLat: number;
+    currentLng: number;
+    destinationLat: number;
+    destinationLng: number;
+    lastUpdate: string;
+    locationName: string;
+    estimatedArrival: string;
+  };
 }
 
 export interface LogisticsTransportAnalysis {
