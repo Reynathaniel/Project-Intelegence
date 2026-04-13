@@ -118,6 +118,85 @@ export interface PMIntelligence {
   createdAt: any;
 }
 
+export interface LogisticsMaterialPlan {
+  material: string;
+  quantity: number;
+  unit: string;
+  requiredDate: string;
+  source: string;
+  priority: 'Critical' | 'High' | 'Medium' | 'Low';
+}
+
+export interface LogisticsDeliverySchedule {
+  material: string;
+  poDate: string;
+  deliveryDate: string;
+  leadTime: number; // days
+  status: 'Ordered' | 'Fabrication' | 'Transit' | 'Delivered';
+}
+
+export interface LogisticsTransportAnalysis {
+  item: string;
+  distance: number; // km
+  cycleTime: number; // hours
+  fleetRequired: string;
+  tripsPerDay: number;
+}
+
+export interface LogisticsSitePlan {
+  laydownAreaAllocation: string;
+  accessRoutes: string;
+  materialFlow: string;
+}
+
+export interface LogisticsInventoryStatus {
+  material: string;
+  stock: number;
+  incoming: number;
+  usageRate: number; // per day
+  daysRemaining: number;
+}
+
+export interface LogisticsRiskAnalysis {
+  delays: string;
+  bottlenecks: string;
+  supplyRisks: string;
+}
+
+export interface LogisticsOptimization {
+  deliveryOptimization: string;
+  transportEfficiency: string;
+  costReduction: string;
+}
+
+export interface LogisticsImpact {
+  scheduleImpact: string;
+  costImpact: string;
+  productivityImpact: string;
+}
+
+export interface LogisticsScenario {
+  bestCase: string;
+  normalCase: string;
+  worstCase: string;
+}
+
+export interface LogisticsIntelligence {
+  id: string;
+  projectId: string;
+  date: string;
+  materialPlan: LogisticsMaterialPlan[];
+  deliverySchedule: LogisticsDeliverySchedule[];
+  transportAnalysis: LogisticsTransportAnalysis[];
+  sitePlan: LogisticsSitePlan;
+  inventoryStatus: LogisticsInventoryStatus[];
+  riskAnalysis: LogisticsRiskAnalysis;
+  optimization: LogisticsOptimization;
+  impact: LogisticsImpact;
+  scenarios: LogisticsScenario;
+  createdAt: any;
+}
+
 export interface UserProfile {
   id: string;
   name: string;

@@ -146,3 +146,79 @@ export async function seedPMData(projectId: string) {
     throw error;
   }
 }
+
+export async function seedLogisticsData(projectId: string) {
+  console.log('Seeding Logistics data for project:', projectId);
+
+  try {
+    // Clear existing data
+    const coll = 'logisticsIntelligence';
+    const q = query(collection(db, coll), where('projectId', '==', projectId));
+    const snap = await getDocs(q);
+    for (const d of snap.docs) {
+      await deleteDoc(doc(db, coll, d.id));
+    }
+
+    // Logistics Intelligence Report
+    const intelligence = {
+      projectId,
+      date: new Date().toISOString().split('T')[0],
+      materialPlan: [
+        { material: 'Structural Steel (Grade S355)', quantity: 450, unit: 'Tons', requiredDate: '2026-05-15', source: 'Local Fabricator', priority: 'Critical' },
+        { material: 'Cement (OPC Type 1)', quantity: 1200, unit: 'Bags', requiredDate: '2026-04-20', source: 'Regional Supplier', priority: 'High' },
+        { material: 'Reinforcement Bars (D16/D25)', quantity: 85, unit: 'Tons', requiredDate: '2026-04-25', source: 'Local Supplier', priority: 'High' },
+        { material: 'High Pressure Valves', quantity: 24, unit: 'Units', requiredDate: '2026-06-10', source: 'International (Italy)', priority: 'Medium' },
+      ],
+      deliverySchedule: [
+        { material: 'Main Transformer', poDate: '2026-03-01', deliveryDate: '2026-08-15', leadTime: 165, status: 'Fabrication' },
+        { material: 'Piping Spools (Batch 1)', poDate: '2026-03-15', deliveryDate: '2026-05-05', leadTime: 50, status: 'Transit' },
+        { material: 'Electrical Cables', poDate: '2026-04-01', deliveryDate: '2026-06-20', leadTime: 80, status: 'Ordered' },
+        { material: 'Foundation Bolts', poDate: '2026-02-20', deliveryDate: '2026-04-10', leadTime: 50, status: 'Delivered' },
+      ],
+      transportAnalysis: [
+        { item: 'Aggregates (Quarry to Site)', distance: 45, cycleTime: 3.5, fleetRequired: '10x Dump Trucks', tripsPerDay: 25 },
+        { item: 'Steel Structures (Fab to Site)', distance: 120, cycleTime: 6, fleetRequired: '4x Flatbed Trailers', tripsPerDay: 8 },
+        { item: 'Heavy Lift (Port to Site)', distance: 85, cycleTime: 12, fleetRequired: '1x Multi-axle Trailer', tripsPerDay: 1 },
+      ],
+      sitePlan: {
+        laydownAreaAllocation: 'Area A (2000m2) for Steel, Area B (500m2) for Piping, Area C (Indoor) for E&I.',
+        accessRoutes: 'Main Gate for heavy vehicles, North Gate for light vehicles. One-way traffic flow implemented.',
+        materialFlow: 'Unloading at Laydown A -> Pre-assembly -> Transport to Installation Point via Route 1.'
+      },
+      inventoryStatus: [
+        { material: 'Cement', stock: 450, incoming: 600, usageRate: 40, daysRemaining: 11 },
+        { material: 'Diesel Fuel', stock: 15000, incoming: 20000, usageRate: 2500, daysRemaining: 6 },
+        { material: 'Rebar D25', stock: 12, incoming: 50, usageRate: 5, daysRemaining: 2 },
+        { material: 'Scaffolding Pipes', stock: 2500, incoming: 0, usageRate: 100, daysRemaining: 25 },
+      ],
+      riskAnalysis: {
+        delays: 'Potential port congestion impacting international valve delivery.',
+        bottlenecks: 'Limited crane capacity for simultaneous unloading at Laydown A.',
+        supplyRisks: 'Cement shortage reported by regional supplier due to plant maintenance.'
+      },
+      optimization: {
+        deliveryOptimization: 'Consolidate small orders into weekly shipments to reduce transport cost.',
+        transportEfficiency: 'Implement night-shift hauling for aggregates to avoid city traffic.',
+        costReduction: 'Negotiate bulk fuel purchase with direct refinery distributor.'
+      },
+      impact: {
+        scheduleImpact: '2-week delay in foundation if cement shortage is not mitigated.',
+        costImpact: 'Increased transport cost due to emergency air-freight for critical valves.',
+        productivityImpact: 'Low productivity in Area A due to material handling bottlenecks.'
+      },
+      scenarios: {
+        bestCase: 'All deliveries on time, cement shortage resolved by alternate supplier.',
+        normalCase: 'Minor transport delays, manageable stock levels with buffer strategy.',
+        worstCase: 'Port strike + major supplier failure. Project delay exceeds 1 month.'
+      },
+      createdAt: serverTimestamp()
+    };
+
+    await addDoc(collection(db, 'logisticsIntelligence'), intelligence);
+
+    return true;
+  } catch (error) {
+    console.error('Error seeding Logistics data:', error);
+    throw error;
+  }
+}

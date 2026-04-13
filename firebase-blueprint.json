@@ -375,6 +375,24 @@
         "scenarios": { "type": "object" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "LogisticsIntelligence": {
+      "title": "Logistics Intelligence",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "materialPlan": { "type": "array", "items": { "type": "object" } },
+        "deliverySchedule": { "type": "array", "items": { "type": "object" } },
+        "transportAnalysis": { "type": "array", "items": { "type": "object" } },
+        "sitePlan": { "type": "object" },
+        "inventoryStatus": { "type": "array", "items": { "type": "object" } },
+        "riskAnalysis": { "type": "object" },
+        "optimization": { "type": "object" },
+        "impact": { "type": "object" },
+        "scenarios": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "firestore": {
@@ -445,6 +463,10 @@
     "/pmIntelligence/{intelligenceId}": {
       "schema": "PMIntelligence",
       "description": "Collection of PM intelligence reports."
+    },
+    "/logisticsIntelligence/{intelligenceId}": {
+      "schema": "LogisticsIntelligence",
+      "description": "Collection of Logistics intelligence reports."
     }
   }
 }

@@ -293,7 +293,7 @@ export default function Dashboard({ user, profile, onLogout }: DashboardProps) {
 
     // Role-specific views
     const roleViewMap: Record<string, React.ReactNode> = {
-      'logistics': selectedProject && <LogisticsDashboard project={selectedProject} profile={profile} />,
+      'logistics': selectedProject && <LogisticsDashboard project={selectedProject} userProfile={profile} />,
       'supervisor': selectedProject && <SupervisorDashboard project={selectedProject} reports={reports} />,
       'hse': selectedProject && <HSEDashboard project={selectedProject} reports={reports} />,
       'hr': selectedProject && <HRDashboard project={selectedProject} reports={reports} />,

@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Project, UserProfile, UserRole, DailyReport, AttendanceRecord } from '../types';
 import { db, collection, addDoc, getDocs, updateDoc, doc, query, where, handleFirestoreError, OperationType, deleteDoc, orderBy, limit } from '../firebase';
 import { compressImage } from '../services/imageService';
-import { seedPMData } from '../services/pmService';
+import { seedPMData, seedLogisticsData } from '../services/pmService';
 import { isSuperAdmin } from '../constants';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Users, Briefcase, ShieldAlert, CheckCircle2, XCircle, ChevronRight, UserPlus, Settings, ShieldCheck, Search, Trash2, Edit2, ArrowUpCircle, ArrowDownCircle, Clock, Mail, MapPin, Zap } from 'lucide-react';
+import { Plus, Users, Briefcase, ShieldAlert, CheckCircle2, XCircle, ChevronRight, UserPlus, Settings, ShieldCheck, Search, Trash2, Edit2, ArrowUpCircle, ArrowDownCircle, Clock, Mail, MapPin, Zap, Truck } from 'lucide-react';
 import { 
   BarChart, 
   Bar, 
@@ -89,6 +89,18 @@ export default function AdminPanel({ projects, users: initialUsers, currentUserE
       setError(null);
     } catch (err) {
       setError('Failed to seed PM intelligence data.');
+    } finally {
+      setSeedingId(null);
+    }
+  };
+
+  const handleSeedLogisticsData = async (projectId: string) => {
+    setSeedingId(projectId + '-logistics');
+    try {
+      await seedLogisticsData(projectId);
+      setError(null);
+    } catch (err) {
+      setError('Failed to seed Logistics intelligence data.');
     } finally {
       setSeedingId(null);
     }
@@ -425,6 +437,14 @@ export default function AdminPanel({ projects, users: initialUsers, currentUserE
                       title="Seed PM Intelligence Data"
                     >
                       <Zap className={`w-4 h-4 ${seedingId === project.id ? 'animate-bounce' : ''}`} />
+                    </button>
+                    <button 
+                      onClick={() => handleSeedLogisticsData(project.id)}
+                      disabled={seedingId === project.id + '-logistics'}
+                      className={`p-2 rounded-lg transition-all ${seedingId === project.id + '-logistics' ? 'bg-blue-500/20 text-blue-500 animate-pulse' : 'hover:bg-blue-500/10 text-neutral-600 hover:text-blue-400'}`}
+                      title="Seed Logistics Intelligence Data"
+                    >
+                      <Truck className={`w-4 h-4 ${seedingId === project.id + '-logistics' ? 'animate-bounce' : ''}`} />
                     </button>
                   </div>
                 </div>

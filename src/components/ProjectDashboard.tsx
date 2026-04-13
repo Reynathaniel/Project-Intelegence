@@ -45,7 +45,7 @@ export default function ProjectDashboard({ project, reports, onUpdateConfig }: P
   };
 
   const widgets = [
-    { id: 'Logistics', name: 'Logistics Hub', icon: <Truck className="w-4 h-4" />, component: <LogisticsDashboard project={project} profile={{ role: 'Admin' } as any} /> },
+    { id: 'Logistics', name: 'Logistics Hub', icon: <Truck className="w-4 h-4" />, component: <LogisticsDashboard project={project} userProfile={{ role: 'Admin' } as any} /> },
     { id: 'Supervisor', name: 'Supervisor Activity', icon: <HardHat className="w-4 h-4" />, component: <SupervisorDashboard project={project} reports={reports} /> },
     { id: 'HSE', name: 'HSE Intelligence', icon: <ShieldCheck className="w-4 h-4" />, component: <HSEDashboard project={project} reports={reports} /> },
     { id: 'HR', name: 'HR Personnel', icon: <Users className="w-4 h-4" />, component: <HRDashboard project={project} reports={reports} /> },
