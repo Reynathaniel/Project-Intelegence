@@ -38,7 +38,7 @@ export default function App() {
         return;
       }
 
-      // If we already have this user and profile, don't restart
+      // If we already have this user and profile, don't restart subscription
       if (user?.uid === firebaseUser.uid && profile) {
         setLoading(false);
         return;
@@ -51,59 +51,72 @@ export default function App() {
       
       if (unsubscribeProfile) unsubscribeProfile();
 
-      unsubscribeProfile = onSnapshot(userDocRef, async (docSnap) => {
-        try {
-          if (docSnap.exists()) {
-            const data = { id: docSnap.id, ...docSnap.data() } as UserProfile;
-            
-            if (!data.roles) {
-              const updatedRoles = [data.role || 'Supervisor'];
-              await setDoc(userDocRef, { roles: updatedRoles }, { merge: true });
-              data.roles = updatedRoles;
-            }
-            
-            setProfile(data);
-            setError(null);
-            setLoading(false);
-          } else {
-            setConnectionStatus('Creating new user profile...');
-            const isOwner = isSuperAdmin(firebaseUser.email);
-            const newProfile: UserProfile = {
-              id: firebaseUser.uid,
-              name: firebaseUser.displayName || 'New User',
-              email: firebaseUser.email || '',
-              role: isOwner ? 'Super Admin' : 'Supervisor',
-              roles: [isOwner ? 'Super Admin' : 'Supervisor'],
-              projects: [],
-            };
-            await setDoc(userDocRef, newProfile);
+      // Use a one-time get first to handle initial profile creation more reliably
+      try {
+        const initialSnap = await getDoc(userDocRef);
+        if (!initialSnap.exists()) {
+          setConnectionStatus('Initializing new user profile...');
+          const isOwner = isSuperAdmin(firebaseUser.email);
+          const newProfile: UserProfile = {
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName || 'New User',
+            email: firebaseUser.email || '',
+            role: isOwner ? 'Super Admin' : 'Supervisor',
+            roles: [isOwner ? 'Super Admin' : 'Supervisor'],
+            projects: [],
+          };
+          await setDoc(userDocRef, newProfile);
+        }
+      } catch (err: any) {
+        console.error('Initial profile check failed:', err);
+        // If it's a permission error, it might be because the doc doesn't exist yet
+        // and rules are strict, but our rules should allow this.
+        // We'll continue to the snapshot listener which might have better luck
+      }
+
+      // Now set up the real-time listener
+      unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = { id: docSnap.id, ...docSnap.data() } as UserProfile;
+          
+          // Ensure roles array exists (migration)
+          if (!data.roles && data.role) {
+            const updatedRoles = [data.role];
+            setDoc(userDocRef, { roles: updatedRoles }, { merge: true }).catch(console.error);
+            data.roles = updatedRoles;
           }
-        } catch (err: any) {
-          if (!profile) {
-            handleFirestoreError(err, OperationType.GET, `users/${firebaseUser.uid}`);
-          }
+          
+          setProfile(data);
+          setError(null);
+          setLoading(false);
+        } else {
+          // This shouldn't happen often after the initial getDoc/setDoc
+          setConnectionStatus('Waiting for profile data...');
         }
       }, (err) => {
+        console.error('Profile snapshot error:', err);
         const errStr = err.message?.toLowerCase() || '';
-        if (errStr.includes('offline') || errStr.includes('permission-denied')) {
-          setConnectionStatus('Connection pending... (Waiting for database)');
-        } else if (!profile) {
-          setError(`Profile Sync Error: ${err.message}`);
+        
+        if (errStr.includes('permission-denied')) {
+          setError(`ACCESS DENIED: Your account (${firebaseUser.email}) does not have permission to access its profile. Please contact an administrator.`);
           setLoading(false);
+        } else if (!profile) {
+          setConnectionStatus('Syncing profile...');
+          // Don't set hard error yet, let the timeout handle it
         }
       });
 
+      // Safety timeout
       const timeoutId = setTimeout(() => {
         if (!profile && !error) {
           if (!navigator.onLine) {
             setConnectionStatus('System Offline. Waiting for internet...');
-            // Don't set a hard error if we are just offline
           } else {
-            setError("The connection is taking longer than expected. This might be due to a slow network or a temporary database sync issue.");
+            setError("AUTHENTICATION TIMEOUT: The system is taking too long to sync your profile. This usually happens due to network issues or if the database is initializing. Please try refreshing or signing out.");
             setLoading(false);
           }
         }
-      }, 25000); // Increased to 25 seconds for better resilience on slow networks
+      }, 15000); // 15 seconds is plenty for a healthy connection
 
       return () => clearTimeout(timeoutId);
     });
@@ -112,7 +125,7 @@ export default function App() {
       unsubscribe();
       if (unsubscribeProfile) unsubscribeProfile();
     };
-  }, [user?.uid, !!profile]);
+  }, [user?.uid]); // Only depend on user.uid to avoid loops
 
   const handleLogin = async () => {
     if (loginLoading) return;
