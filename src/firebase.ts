@@ -18,36 +18,46 @@ const firebaseConfig = {
 // Use the prioritized config
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore
-const dbId = (firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== '(default)') 
-  ? firebaseConfig.firestoreDatabaseId 
-  : undefined;
-
-export const db = initializeFirestore(app, {
-  localCache: memoryLocalCache(),
-  // Removing experimentalForceLongPolling as it can sometimes cause issues with real-time updates
-  // and is often not needed if the network is properly enabled.
-}, dbId);
-
-// Test connection to Firestore
-export async function testConnection() {
-  try {
-    // Attempt to get a dummy document from the server to verify connection
-    await getDocFromServer(doc(db, '_internal_', 'connection_test'));
-    if (import.meta.env.DEV) console.log('Firestore: Connection verified');
-  } catch (error: any) {
-    if (error.message?.includes('the client is offline')) {
-      console.error("Firestore Configuration Error: The client is offline. Please check your Firebase configuration and network.");
-    }
-    // We don't throw here to allow the app to try and recover or show a custom UI
-  }
+if (import.meta.env.DEV) {
+  console.log('Firebase Config:', { ...firebaseConfig, apiKey: '***' });
 }
 
-// Call test connection on boot
-testConnection();
+// Initialize Firestore
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+}, firebaseConfig.firestoreDatabaseId || '(default)');
+
+// Test connection to Firestore with retry logic
+export async function testConnection(retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      // Attempt to get a document from the 'test' collection which is allowed by rules
+      const testDoc = doc(db, 'test', 'connection');
+      await getDocFromServer(testDoc);
+      if (import.meta.env.DEV) console.log('Firestore: Connection verified');
+      return true;
+    } catch (error: any) {
+      console.warn(`Firestore Connection Attempt ${i + 1} failed:`, error.message);
+      
+      if (i === retries - 1) {
+        console.error("Firestore Connection Test Final Error:", error);
+        if (error.message?.includes('the client is offline')) {
+          console.error("Firestore Configuration Error: The client is offline. Please check your Firebase configuration and network.");
+        }
+      } else {
+        // Wait before retrying (1s, 2s, 4s)
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+      }
+    }
+  }
+  return false;
+}
+
+// Call test connection on boot with a slight delay to allow network to stabilize
+setTimeout(() => testConnection(), 1000);
 
 if (import.meta.env.DEV) {
-  console.log('Firestore initialized with Database ID:', dbId || '(default)');
+  console.log('Firestore initialized with Database ID:', firebaseConfig.firestoreDatabaseId || '(default)');
 }
 
 // Explicitly enable network

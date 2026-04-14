@@ -97,12 +97,13 @@ export default function App() {
         if (!profile && !error) {
           if (!navigator.onLine) {
             setConnectionStatus('System Offline. Waiting for internet...');
+            // Don't set a hard error if we are just offline
           } else {
-            setError("The connection is taking longer than expected. Please check your internet or try a 'Hard Refresh'.");
+            setError("The connection is taking longer than expected. This might be due to a slow network or a temporary database sync issue.");
             setLoading(false);
           }
         }
-      }, 15000); // Slightly longer timeout for stability
+      }, 25000); // Increased to 25 seconds for better resilience on slow networks
 
       return () => clearTimeout(timeoutId);
     });
