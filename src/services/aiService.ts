@@ -1,4 +1,9 @@
 import { UserRole, Project } from '../types';
+import { GoogleGenAI } from "@google/genai";
+
+const ai = new GoogleGenAI({ 
+  apiKey: process.env.GEMINI_API_KEY || (import.meta as any).env.VITE_GEMINI_API_KEY 
+});
 
 export const buildExtractionPrompt = (discipline: UserRole, project: Project): string => {
   const basePrompt = `You are an expert EPC (Engineering, Procurement, and Construction) data analyst. 
@@ -118,59 +123,41 @@ export const processPDFWithAI = async (
   discipline: UserRole,
   projectContext: Project
 ): Promise<any> => {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error('Anthropic API key is not configured. Please add VITE_ANTHROPIC_API_KEY to your environment.');
-  }
-
   const base64 = await fileToBase64(pdfFile);
   const extractionPrompt = buildExtractionPrompt(discipline, projectContext);
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'dangerously-allow-browser': 'true' // Note: In a real production app, this should be handled server-side
-    },
-    body: JSON.stringify({
-      model: 'claude-3-5-sonnet-20241022', // Updated to latest Sonnet
-      max_tokens: 4000,
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'document',
-            source: {
-              type: 'base64',
-              media_type: 'application/pdf',
-              data: base64
-            }
-          },
-          {
-            type: 'text',
-            text: extractionPrompt
-          }
-        ]
-      }]
-    })
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error?.message || 'Failed to call Claude API');
-  }
-
-  const aiResponse = await response.json();
-  const content = aiResponse.content[0].text;
-  
   try {
-    // Clean up potential markdown blocks if Claude ignored instructions
+    const response = await ai.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: [
+        {
+          inlineData: {
+            mimeType: "application/pdf",
+            data: base64
+          }
+        },
+        {
+          text: extractionPrompt
+        }
+      ],
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+
+    const content = response.text;
+    if (!content) {
+      throw new Error('AI returned an empty response.');
+    }
+
+    // Clean up potential markdown blocks if Gemini ignored instructions
     const jsonString = content.replace(/```json\n?|\n?```/g, '').trim();
     return JSON.parse(jsonString);
-  } catch (e) {
-    console.error('Failed to parse AI response:', content);
-    throw new Error('AI returned invalid JSON format. Please try again or fill manually.');
+  } catch (error: any) {
+    console.error('Gemini API Error:', error);
+    if (error.message?.includes('API key')) {
+      throw new Error('Gemini API key is missing or invalid. Please configure VITE_GEMINI_API_KEY or use the platform key selector.');
+    }
+    throw new Error(error.message || 'Failed to process PDF with Gemini AI');
   }
 };

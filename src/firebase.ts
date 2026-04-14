@@ -7,10 +7,10 @@ import firebaseConfigFromJson from '../firebase-applet-config.json';
 // Support environment variables for Vercel deployment, fallback to JSON config
 const rawDatabaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || firebaseConfigFromJson.firestoreDatabaseId;
 
-// CRITICAL FIX: Ensure databaseId is just the ID string, not a URL (common mistake in Vercel config)
+// CRITICAL FIX: Ensure databaseId is just the ID string, not a URL
 const sanitizedDatabaseId = (rawDatabaseId && rawDatabaseId.includes('https://')) 
-  ? firebaseConfigFromJson.firestoreDatabaseId // Fallback to known good ID from JSON
-  : rawDatabaseId;
+  ? firebaseConfigFromJson.firestoreDatabaseId 
+  : (rawDatabaseId || firebaseConfigFromJson.firestoreDatabaseId);
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseConfigFromJson.apiKey,
@@ -38,20 +38,17 @@ if (import.meta.env.DEV || window.location.hostname.includes('vercel.app') || !w
   console.log('--------------------------');
 }
 
-// Initialize Firestore with robust settings for production and sandboxed environments
+// Initialize Firestore with robust settings
 export const db = initializeFirestore(app, {
   localCache: memoryLocalCache(),
 }, firebaseConfig.firestoreDatabaseId || '(default)');
 
 // Test connection to Firestore with retry logic
-export async function testConnection(retries = 5) {
+export async function testConnection(retries = 3) {
   if (import.meta.env.DEV) console.log('Firestore: Starting connection test...');
   
   for (let i = 0; i < retries; i++) {
     try {
-      // Ensure network is enabled before testing
-      await enableNetwork(db).catch(() => {});
-      
       // Attempt to get a document from the 'test' collection which is allowed by rules
       const testDoc = doc(db, 'test', 'connection');
       await getDocFromServer(testDoc);
@@ -59,25 +56,9 @@ export async function testConnection(retries = 5) {
       if (import.meta.env.DEV) console.log('Firestore: Connection verified successfully');
       return true;
     } catch (error: any) {
-      const isOffline = error.message?.includes('offline');
       console.warn(`Firestore Connection Attempt ${i + 1} failed:`, error.message);
       
-      if (i === retries - 1) {
-        const errorDetails = {
-          message: error.message,
-          code: error.code,
-          name: error.name,
-          stack: error.stack,
-          domain: window.location.hostname,
-          projectId: firebaseConfig.projectId,
-          databaseId: firebaseConfig.firestoreDatabaseId
-        };
-        console.error("Firestore Connection Test Final Error:", errorDetails);
-        if (isOffline) {
-          console.error("CRITICAL: Firestore is reporting offline status. This usually indicates a configuration mismatch, network restriction, or missing Authorized Domain in Firebase Console.");
-        }
-      } else {
-        // Progressive delay: 2s, 4s, 8s, 16s
+      if (i < retries - 1) {
         const delay = Math.pow(2, i + 1) * 1000;
         await new Promise(resolve => setTimeout(resolve, delay));
       }
@@ -87,24 +68,10 @@ export async function testConnection(retries = 5) {
 }
 
 // Call test connection on boot with a delay to allow the environment to initialize
-setTimeout(() => testConnection(), 2000);
+setTimeout(() => testConnection(), 3000);
 
 if (import.meta.env.DEV) {
   console.log('Firestore initialized with Database ID:', firebaseConfig.firestoreDatabaseId || '(default)');
-}
-
-// Explicitly enable network
-enableNetwork(db).catch(err => {
-  console.warn('Firestore: Failed to enable network:', err);
-});
-
-if (import.meta.env.DEV) {
-  window.addEventListener('online', () => {
-    console.log('Browser: Online - Re-enabling Firestore network');
-    enableNetwork(db).catch(() => {});
-  });
-  window.addEventListener('offline', () => console.log('Browser: Offline'));
-  console.log('Browser initial status:', navigator.onLine ? 'Online' : 'Offline');
 }
 
 export const auth = getAuth(app);
