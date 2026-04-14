@@ -3,9 +3,10 @@ import { Project, UserProfile, UserRole, DailyReport, MaterialRequest } from '..
 import { db, collection, addDoc, updateDoc, doc, serverTimestamp, handleFirestoreError, OperationType, query, where, onSnapshot, getDocs, increment, arrayUnion } from '../firebase';
 import { compressImage } from '../services/imageService';
 import { motion } from 'motion/react';
-import { X, Send, Save, AlertCircle, Plus, Fuel, Truck, ArrowDownCircle, ArrowUpCircle, Eye, FileText, Settings, ClipboardCheck, UserCheck, Camera, Repeat, Users, Search, Shield, ShieldAlert } from 'lucide-react';
+import { X, Send, Save, AlertCircle, Plus, Fuel, Truck, ArrowDownCircle, ArrowUpCircle, Eye, FileText, Settings, ClipboardCheck, UserCheck, Camera, Repeat, Users, Search, Shield, ShieldAlert, Sparkles, FileUp, CheckCircle2 } from 'lucide-react';
 import { generateProjectReport } from '../services/pdfService';
 import { AnimatePresence } from 'motion/react';
+import ReportPDFUploader from './ReportPDFUploader';
 
 interface ReportFormProps {
   project: Project;
@@ -59,6 +60,11 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
     if (defaultDiscipline) return defaultDiscipline;
     return profile.roles[0] || (profile.role as UserRole) || 'Supervisor';
   });
+  const [inputMode, setInputMode] = useState<'manual' | 'pdf'>('manual');
+  const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set());
+  const [sourcePdfUrl, setSourcePdfUrl] = useState<string | undefined>(initialReport?.sourcePdfUrl);
+  const [showConflictModal, setShowConflictModal] = useState<{ data: any, url: string } | null>(null);
+
   const reportDate = initialReport?.date || new Date().toISOString().split('T')[0];
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -623,6 +629,9 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
         data: JSON.stringify(formData),
         status,
         createdAt: initialReport ? initialReport.createdAt : serverTimestamp(),
+        sourcePdfUrl,
+        aiFilled: aiFilledFields.size > 0,
+        aiConfidence: aiFilledFields.size > 0 ? 'High' : undefined
       };
 
       if (discipline === 'HSE') {
@@ -2057,6 +2066,53 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
           </div>
         </CollapsibleSection>
       </div>
+    );
+  };
+
+  const handleAIDataExtracted = (extractedData: any, pdfUrl: string) => {
+    // Check if form already has some data (other than defaults)
+    const hasData = Object.values(formData).some(val => {
+      if (Array.isArray(val)) return val.length > 0;
+      if (typeof val === 'object' && val !== null) return Object.keys(val).length > 0;
+      return val !== '' && val !== 0 && val !== false;
+    });
+
+    if (hasData) {
+      setShowConflictModal({ data: extractedData, url: pdfUrl });
+    } else {
+      applyAIData(extractedData, pdfUrl);
+    }
+  };
+
+  const applyAIData = (data: any, url: string, mode: 'replace' | 'merge' = 'replace') => {
+    let newData;
+    if (mode === 'merge') {
+      newData = { ...formData };
+      Object.keys(data).forEach(key => {
+        if (!newData[key] || (Array.isArray(newData[key]) && newData[key].length === 0)) {
+          newData[key] = data[key];
+        }
+      });
+    } else {
+      newData = { ...formData, ...data };
+    }
+
+    setFormData(newData);
+    setSourcePdfUrl(url);
+    
+    const filled = new Set<string>();
+    Object.keys(data).forEach(key => filled.add(key));
+    setAiFilledFields(filled);
+    setShowConflictModal(null);
+    setInputMode('manual'); // Switch back to manual to review
+  };
+
+  const renderAIBadge = (fieldName: string) => {
+    if (!aiFilledFields.has(fieldName)) return null;
+    return (
+      <span className="absolute top-1 right-2 text-[8px] bg-emerald-500 text-black px-1.5 py-0.5 rounded font-bold z-10">
+        AI
+      </span>
     );
   };
 
@@ -4661,13 +4717,16 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
               <label className="text-xs font-mono text-neutral-500 uppercase tracking-widest">
                 {field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
               </label>
-              <textarea
-                value={formData[field] || ''}
-                onChange={(e) => setFormData({ ...formData, [field]: e.target.value })}
-                className="w-full bg-neutral-800 border border-neutral-700 rounded-xl p-4 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all outline-none min-h-[100px] resize-none"
-                placeholder={`Enter ${field.toLowerCase()} details...`}
-                disabled={loading}
-              />
+              <div className="relative">
+                <textarea
+                  value={formData[field] || ''}
+                  onChange={(e) => setFormData({ ...formData, [field]: e.target.value })}
+                  className={`w-full bg-neutral-800 border border-neutral-700 rounded-xl p-4 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all outline-none min-h-[100px] resize-none ${aiFilledFields.has(field) ? 'bg-emerald-500/5 border-emerald-500/30' : ''}`}
+                  placeholder={`Enter ${field.toLowerCase()} details...`}
+                  disabled={loading}
+                />
+                {renderAIBadge(field)}
+              </div>
             </div>
           ))}
         </div>
@@ -4694,7 +4753,58 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
       </div>
 
       <div className="p-4 sm:p-8 space-y-8 max-h-[calc(100dvh-12rem)] overflow-y-auto custom-scrollbar">
-        {/* Discipline Selector for Multi-role Users */}
+        {/* Input Mode Toggle */}
+        {!initialReport && (
+          <div className="flex p-1 bg-neutral-800/50 rounded-2xl w-fit mx-auto">
+            <button
+              onClick={() => setInputMode('manual')}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                inputMode === 'manual' ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              <ClipboardCheck className="w-4 h-4" />
+              Fill Manually
+            </button>
+            <button
+              onClick={() => setInputMode('pdf')}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                inputMode === 'pdf' ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              <FileUp className="w-4 h-4" />
+              Upload PDF & Auto-fill
+              <Sparkles className="w-3 h-3 animate-pulse" />
+            </button>
+          </div>
+        )}
+
+        {inputMode === 'pdf' && !initialReport ? (
+          <div className="max-w-xl mx-auto py-8">
+            <ReportPDFUploader 
+              project={project} 
+              discipline={discipline} 
+              onDataExtracted={handleAIDataExtracted} 
+            />
+            {sourcePdfUrl && (
+              <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                  <span className="text-sm font-bold text-white">PDF Attached Successfully</span>
+                </div>
+                <a 
+                  href={sourcePdfUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs text-emerald-500 hover:underline font-bold"
+                >
+                  View PDF
+                </a>
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Discipline Selector for Multi-role Users */}
         {profile.roles.length > 1 && !initialReport && (
           <div className="p-6 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
             <label className="text-[10px] text-emerald-500 uppercase font-mono tracking-widest mb-2 block">Reporting As</label>
@@ -4789,7 +4899,9 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {renderFields()}
         </div>
-      </div>
+      </>
+    )}
+  </div>
 
       <div className="p-4 sm:p-6 border-t border-neutral-800 bg-neutral-900/50 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 sm:gap-4">
         <button
@@ -4817,6 +4929,58 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
           SUBMIT REPORT
         </button>
       </div>
+
+      {/* Conflict Resolution Modal */}
+      <AnimatePresence>
+        {showConflictModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-neutral-900 border border-neutral-800 rounded-3xl p-8 max-w-md w-full space-y-6"
+            >
+              <div className="p-3 bg-amber-500/10 rounded-2xl w-fit">
+                <AlertCircle className="w-8 h-8 text-amber-500" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold text-white">Form Has Existing Data</h3>
+                <p className="text-sm text-neutral-400">
+                  You've already entered some data manually. How would you like to handle the AI-extracted data?
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-3">
+                <button
+                  onClick={() => applyAIData(showConflictModal.data, showConflictModal.url, 'replace')}
+                  className="w-full p-4 bg-emerald-500 text-black font-bold rounded-2xl hover:bg-emerald-600 transition-all text-left flex items-center justify-between group"
+                >
+                  <div>
+                    <p>Replace All</p>
+                    <p className="text-[10px] opacity-60 font-normal">Overwrite everything with AI data</p>
+                  </div>
+                  <ArrowUpCircle className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </button>
+                <button
+                  onClick={() => applyAIData(showConflictModal.data, showConflictModal.url, 'merge')}
+                  className="w-full p-4 bg-neutral-800 text-white font-bold rounded-2xl hover:bg-neutral-700 transition-all text-left flex items-center justify-between group"
+                >
+                  <div>
+                    <p>Merge Data</p>
+                    <p className="text-[10px] text-neutral-500 font-normal">Keep existing, fill only empty fields</p>
+                  </div>
+                  <Repeat className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
+                </button>
+                <button
+                  onClick={() => setShowConflictModal(null)}
+                  className="w-full p-4 bg-transparent text-neutral-500 font-bold rounded-2xl hover:bg-neutral-800 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

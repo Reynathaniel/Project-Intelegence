@@ -302,6 +302,9 @@ export interface DailyReport {
   createdAt: any;
   weather?: WeatherData;
   manpower?: ManpowerSummary;
+  sourcePdfUrl?: string;
+  aiFilled?: boolean;
+  aiConfidence?: 'High' | 'Medium' | 'Low';
 }
 
 export interface WeatherData {

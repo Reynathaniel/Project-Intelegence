@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { initializeFirestore, memoryLocalCache, doc, getDoc, getDocs, collection, query, where, onSnapshot, setDoc, updateDoc, deleteDoc, addDoc, serverTimestamp, getDocFromServer, increment, arrayUnion, orderBy, limit, enableNetwork, disableNetwork } from 'firebase/firestore';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import firebaseConfigFromJson from '../firebase-applet-config.json';
 
 // Support environment variables for Vercel deployment, fallback to JSON config
@@ -108,6 +109,7 @@ if (import.meta.env.DEV) {
 
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+export const storage = getStorage(app);
 
 // Error handling for Firestore permissions
 export enum OperationType {
@@ -183,6 +185,9 @@ export {
   orderBy,
   limit,
   enableNetwork,
-  disableNetwork
+  disableNetwork,
+  ref,
+  uploadBytesResumable,
+  getDownloadURL
 };
 export type { FirebaseUser };

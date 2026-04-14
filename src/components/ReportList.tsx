@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { DailyReport, UserRole } from '../types';
 import { isSuperAdmin } from '../constants';
-import { FileText, User, Calendar, Tag, ChevronRight, CheckCircle2, Clock, Edit2, Trash2, AlertTriangle, X as CloseIcon, Info } from 'lucide-react';
+import { FileText, User, Calendar, Tag, ChevronRight, CheckCircle2, Clock, Edit2, Trash2, AlertTriangle, X as CloseIcon, Info, FileDown, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface ReportListProps {
@@ -89,6 +89,18 @@ export default function ReportList({ reports, userRoles = [], userId, userEmail,
                 </td>
                 <td className="p-4">
                   <div className="flex items-center justify-end gap-2">
+                    {report.sourcePdfUrl && (
+                      <a 
+                        href={report.sourcePdfUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="p-2 hover:bg-emerald-500/10 rounded-lg text-emerald-500 transition-all flex items-center gap-1"
+                        title="Download Original PDF"
+                      >
+                        <FileDown className="w-4 h-4" />
+                        {report.aiFilled && <Sparkles className="w-2.5 h-2.5" />}
+                      </a>
+                    )}
                     {onEdit && canModify(report) && (
                       <button 
                         onClick={() => onEdit(report)}
@@ -158,6 +170,17 @@ export default function ReportList({ reports, userRoles = [], userId, userEmail,
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-4 border-t border-neutral-800">
+              {report.sourcePdfUrl && (
+                <a 
+                  href={report.sourcePdfUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded-xl transition-all text-xs font-bold uppercase tracking-widest"
+                >
+                  <FileDown className="w-3 h-3" />
+                  PDF {report.aiFilled && <Sparkles className="w-2.5 h-2.5" />}
+                </a>
+              )}
               {onEdit && canModify(report) && (
                 <button 
                   onClick={() => onEdit(report)}
