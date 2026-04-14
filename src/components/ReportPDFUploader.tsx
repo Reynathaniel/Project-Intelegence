@@ -149,43 +149,53 @@ export default function ReportPDFUploader({ project, discipline, onDataExtracted
             exit={{ opacity: 0, scale: 0.95 }}
             className="bg-neutral-900/80 border border-neutral-800 rounded-2xl p-8 text-center space-y-6"
           >
-            <div className="relative w-20 h-20 mx-auto">
+            <div className="relative w-24 h-24 mx-auto">
               {status === 'uploading' && (
                 <svg className="w-full h-full transform -rotate-90">
                   <circle
-                    cx="40"
-                    cy="40"
-                    r="36"
+                    cx="48"
+                    cy="48"
+                    r="44"
                     stroke="currentColor"
                     strokeWidth="4"
                     fill="transparent"
                     className="text-neutral-800"
                   />
                   <circle
-                    cx="40"
-                    cy="40"
-                    r="36"
+                    cx="48"
+                    cy="48"
+                    r="44"
                     stroke="currentColor"
                     strokeWidth="4"
                     fill="transparent"
-                    strokeDasharray={226}
-                    strokeDashoffset={226 - (226 * uploadProgress) / 100}
+                    strokeDasharray={276}
+                    strokeDashoffset={276 - (276 * uploadProgress) / 100}
                     className="text-emerald-500 transition-all duration-300"
                   />
                 </svg>
               )}
               {status === 'processing' && (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-16 h-16 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
+                  <div className="w-20 h-20 border-4 border-emerald-500/10 border-t-emerald-500 rounded-full animate-spin" />
+                  <motion.div 
+                    initial={{ top: 0 }}
+                    animate={{ top: '100%' }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                    className="absolute left-0 right-0 h-0.5 bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.8)] z-10"
+                  />
                 </div>
               )}
               {status === 'done' && (
-                <div className="absolute inset-0 flex items-center justify-center bg-emerald-500 rounded-full">
-                  <CheckCircle2 className="w-10 h-10 text-black" />
-                </div>
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute inset-0 flex items-center justify-center bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/20"
+                >
+                  <CheckCircle2 className="w-12 h-12 text-black" />
+                </motion.div>
               )}
               <div className="absolute inset-0 flex items-center justify-center">
-                <FileText className={`w-8 h-8 ${status === 'done' ? 'hidden' : 'text-white'}`} />
+                <FileText className={`w-10 h-10 ${status === 'done' ? 'hidden' : 'text-white'}`} />
               </div>
             </div>
 

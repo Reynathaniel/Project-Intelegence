@@ -60,7 +60,7 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
     if (defaultDiscipline) return defaultDiscipline;
     return profile.roles[0] || (profile.role as UserRole) || 'Supervisor';
   });
-  const [inputMode, setInputMode] = useState<'manual' | 'pdf'>('manual');
+  const [inputMode, setInputMode] = useState<'manual' | 'pdf'>(initialReport ? 'manual' : 'pdf');
   const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set());
   const [sourcePdfUrl, setSourcePdfUrl] = useState<string | undefined>(initialReport?.sourcePdfUrl);
   const [showConflictModal, setShowConflictModal] = useState<{ data: any, url: string } | null>(null);
@@ -4753,79 +4753,85 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
       </div>
 
       <div className="p-4 sm:p-8 space-y-8 max-h-[calc(100dvh-12rem)] overflow-y-auto custom-scrollbar">
-        {/* Input Mode Toggle */}
-        {!initialReport && (
-          <div className="flex p-1 bg-neutral-800/50 rounded-2xl w-fit mx-auto">
-            <button
-              onClick={() => setInputMode('manual')}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                inputMode === 'manual' ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' : 'text-neutral-400 hover:text-white'
-              }`}
-            >
-              <ClipboardCheck className="w-4 h-4" />
-              Fill Manually
-            </button>
-            <button
-              onClick={() => setInputMode('pdf')}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                inputMode === 'pdf' ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' : 'text-neutral-400 hover:text-white'
-              }`}
-            >
-              <FileUp className="w-4 h-4" />
-              Upload PDF & Auto-fill
-              <Sparkles className="w-3 h-3 animate-pulse" />
-            </button>
-          </div>
-        )}
-
         {inputMode === 'pdf' && !initialReport ? (
-          <div className="max-w-xl mx-auto py-8">
+          <div className="max-w-2xl mx-auto space-y-8 py-4">
+            <div className="text-center space-y-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+                <Sparkles className="w-3 h-3 text-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-mono text-emerald-500 uppercase tracking-widest">AI Intelligence Active</span>
+              </div>
+              <h2 className="text-3xl font-bold text-white tracking-tight">Daily Report Command</h2>
+              <p className="text-neutral-500 text-sm max-w-md mx-auto">
+                Upload your field report PDF. Our AI will analyze the data, extract metrics, and synchronize it with the command center automatically.
+              </p>
+            </div>
+
+            {/* Discipline Selector Integrated into AI Flow */}
+            {profile.roles.length > 1 && (
+              <div className="bg-neutral-900/50 border border-neutral-800 rounded-2xl p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-emerald-500" />
+                  <h3 className="text-xs font-bold text-white uppercase tracking-widest">Select Intelligence Sector</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {profile.roles.map(role => (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => setDiscipline(role)}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all border ${
+                        discipline === role 
+                          ? 'bg-emerald-500 text-black border-emerald-400 shadow-lg shadow-emerald-500/20' 
+                          : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:border-neutral-600'
+                      }`}
+                    >
+                      {role}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <ReportPDFUploader 
               project={project} 
               discipline={discipline} 
               onDataExtracted={handleAIDataExtracted} 
             />
-            {sourcePdfUrl && (
-              <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                  <span className="text-sm font-bold text-white">PDF Attached Successfully</span>
-                </div>
-                <a 
-                  href={sourcePdfUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-xs text-emerald-500 hover:underline font-bold"
-                >
-                  View PDF
-                </a>
-              </div>
-            )}
+
+            <div className="flex items-center justify-center gap-4 pt-4">
+              <div className="h-px bg-neutral-800 flex-1" />
+              <button 
+                onClick={() => setInputMode('manual')}
+                className="text-[10px] font-mono text-neutral-500 uppercase tracking-widest hover:text-white transition-colors"
+              >
+                Or Fill Manually
+              </button>
+              <div className="h-px bg-neutral-800 flex-1" />
+            </div>
           </div>
         ) : (
           <>
-            {/* Discipline Selector for Multi-role Users */}
-        {profile.roles.length > 1 && !initialReport && (
-          <div className="p-6 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
-            <label className="text-[10px] text-emerald-500 uppercase font-mono tracking-widest mb-2 block">Reporting As</label>
-            <div className="flex flex-wrap gap-2">
-              {profile.roles.map(role => (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => setDiscipline(role)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
-                    discipline === role 
-                      ? 'bg-emerald-500 text-black border-emerald-400' 
-                      : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:border-neutral-600'
-                  }`}
+            {/* Manual Entry Header */}
+            {!initialReport && (
+              <div className="flex items-center justify-between pb-4 border-b border-neutral-800">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-neutral-800 rounded-xl">
+                    <ClipboardCheck className="w-5 h-5 text-neutral-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-white uppercase tracking-tight">Manual Intelligence Entry</h2>
+                    <p className="text-[10px] font-mono text-neutral-500 uppercase">Sector: {discipline}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setInputMode('pdf')}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-500 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-emerald-500/20 transition-all border border-emerald-500/20"
                 >
-                  {role}
+                  <Sparkles className="w-3 h-3" />
+                  Switch to AI
                 </button>
-              ))}
-            </div>
-          </div>
-        )}
+              </div>
+            )}
 
         {error && (
           <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-500 text-sm">
