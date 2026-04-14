@@ -4,6 +4,13 @@ import { initializeFirestore, memoryLocalCache, doc, getDoc, getDocs, collection
 import firebaseConfigFromJson from '../firebase-applet-config.json';
 
 // Support environment variables for Vercel deployment, fallback to JSON config
+const rawDatabaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || firebaseConfigFromJson.firestoreDatabaseId;
+
+// CRITICAL FIX: Ensure databaseId is just the ID string, not a URL (common mistake in Vercel config)
+const sanitizedDatabaseId = (rawDatabaseId && rawDatabaseId.includes('https://')) 
+  ? firebaseConfigFromJson.firestoreDatabaseId // Fallback to known good ID from JSON
+  : rawDatabaseId;
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseConfigFromJson.apiKey,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfigFromJson.authDomain,
@@ -12,7 +19,7 @@ const firebaseConfig = {
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfigFromJson.messagingSenderId,
   appId: import.meta.env.VITE_FIREBASE_APP_ID || firebaseConfigFromJson.appId,
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || firebaseConfigFromJson.measurementId,
-  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID || firebaseConfigFromJson.firestoreDatabaseId
+  firestoreDatabaseId: sanitizedDatabaseId
 };
 
 // Use the prioritized config
@@ -23,17 +30,16 @@ if (import.meta.env.DEV || window.location.hostname.includes('vercel.app') || !w
   console.log('Current Domain:', window.location.hostname);
   console.log('Firebase Project:', firebaseConfig.projectId);
   console.log('Auth Domain:', firebaseConfig.authDomain);
+  console.log('Firestore DB ID:', firebaseConfig.firestoreDatabaseId);
+  if (rawDatabaseId !== sanitizedDatabaseId) {
+    console.warn('WARNING: Detected invalid Database URL in config. Sanitized to ID.');
+  }
   console.log('--------------------------');
 }
 
 // Initialize Firestore with robust settings for production and sandboxed environments
 export const db = initializeFirestore(app, {
   localCache: memoryLocalCache(),
-  experimentalForceLongPolling: true,
-  // useFetchStreams: false is critical for environments with restrictive proxies
-  // (like some CDN/Edge providers) that interfere with gRPC-web streams.
-  // @ts-ignore - Some versions of the SDK might not have this in the type definition but support it
-  useFetchStreams: false,
 }, firebaseConfig.firestoreDatabaseId || '(default)');
 
 // Test connection to Firestore with retry logic

@@ -412,6 +412,10 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (isPrivileged() || isProjectMember(resource.data.projectId));
       allow write: if isPrivileged();
     }
+    match /logisticsIntelligence/{id} {
+      allow read: if isAuthenticated() && (isPrivileged() || isProjectMember(resource.data.projectId) || hasRole('Logistics'));
+      allow write: if isPrivileged() || hasRole('Logistics');
+    }
 
     // Test collection for connection health checks
     match /test/connection {
