@@ -117,11 +117,17 @@ export default function App() {
   const handleLogin = async () => {
     if (loginLoading) return;
     setLoginLoading(true);
+    setError(null);
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error: any) {
-      if (error.code !== 'auth/cancelled-popup-request') {
-        console.error('Login failed:', error);
+      console.error('Login failed:', error);
+      if (error.code === 'auth/unauthorized-domain') {
+        setError(`UNAUTHORIZED DOMAIN: The domain "${window.location.hostname}" is not authorized in your Firebase Console. Please add it to Authentication > Settings > Authorized domains.`);
+      } else if (error.code === 'auth/popup-blocked') {
+        setError("POPUP BLOCKED: Please enable popups for this site to authenticate.");
+      } else if (error.code !== 'auth/cancelled-popup-request') {
+        setError(`Authentication Error: ${error.message}`);
       }
     } finally {
       setLoginLoading(false);
@@ -135,6 +141,32 @@ export default function App() {
       await signOut(auth);
     } catch (error) {
       console.error('Logout failed:', error);
+      setLoading(false);
+    }
+  };
+
+  const handleRetry = async () => {
+    setError(null);
+    setLoading(true);
+    setConnectionStatus('Manual reconnecting...');
+    try {
+      await disableNetwork(db);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await enableNetwork(db);
+      // Force a re-fetch of the profile
+      if (user) {
+        const userDocRef = doc(db, 'users', user.uid);
+        const snap = await getDocFromServer(userDocRef);
+        if (snap.exists()) {
+          setProfile({ id: snap.id, ...snap.data() } as UserProfile);
+          setLoading(false);
+        } else {
+          setError("Profile not found after reconnect. Please try signing out and in again.");
+          setLoading(false);
+        }
+      }
+    } catch (err: any) {
+      setError(`Manual Reconnect Failed: ${err.message}`);
       setLoading(false);
     }
   };
@@ -201,8 +233,24 @@ export default function App() {
                 <Shield className="w-12 h-12 text-red-500" />
               </div>
               <div className="space-y-2">
-                <h2 className="text-xl font-bold text-white">Connection Error</h2>
-                <p className="text-sm text-neutral-400 font-mono break-words">{error}</p>
+                <h2 className="text-xl font-bold text-white">System Alert</h2>
+                <div className="p-4 bg-black/40 rounded-xl border border-white/5 text-left space-y-3">
+                  <p className="text-xs text-red-400 font-mono break-words leading-relaxed">
+                    <span className="text-white/40 mr-2">[ERROR]</span>
+                    {error}
+                  </p>
+                  
+                  {error?.includes('UNAUTHORIZED DOMAIN') && (
+                    <div className="pt-2 border-t border-white/5 space-y-2">
+                      <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">Required Action:</p>
+                      <ol className="text-[10px] text-neutral-400 space-y-1 list-decimal ml-4">
+                        <li>Go to Firebase Console</li>
+                        <li>Authentication &gt; Settings &gt; Authorized domains</li>
+                        <li>Add <span className="text-white font-mono">{window.location.hostname}</span></li>
+                      </ol>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex flex-col gap-3">
                 <button
@@ -212,7 +260,7 @@ export default function App() {
                   HARD REFRESH
                 </button>
                 <button
-                  onClick={() => window.location.reload()}
+                  onClick={handleRetry}
                   className="w-full py-3 bg-neutral-800 text-white font-bold rounded-xl hover:bg-neutral-700 transition-colors"
                 >
                   RETRY CONNECTION
