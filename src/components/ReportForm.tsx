@@ -629,9 +629,9 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
         data: JSON.stringify(formData),
         status,
         createdAt: initialReport ? initialReport.createdAt : serverTimestamp(),
-        sourcePdfUrl,
+        sourcePdfUrl: sourcePdfUrl || null,
         aiFilled: aiFilledFields.size > 0,
-        aiConfidence: aiFilledFields.size > 0 ? 'High' : undefined
+        aiConfidence: aiFilledFields.size > 0 ? 'High' : null
       };
 
       if (discipline === 'HSE') {
@@ -667,21 +667,21 @@ export default function ReportForm({ project, profile, onClose, initialReport, d
             // Find if this manpower already exists in the collection
             const existing = allManpower.find(m => m.manpowerId === person.manpowerId);
             const manpowerData = {
-              manpowerId: person.manpowerId,
-              name: person.name,
+              manpowerId: person.manpowerId || null,
+              name: person.name || null,
               email: person.email || '',
-              position: person.position,
-              classification: person.classification,
-              siteStatus: person.siteStatus,
-              activeStatus: person.activeStatus,
-              mcuStatus: person.mcuStatus,
-              mcuExpiry: person.mcuExpiry,
-              pointOfHire: person.pointOfHire,
-              entryPermitStatus: person.entryPermitStatus,
-              entryPermitExpiry: person.entryPermitExpiry,
-              contractStart: person.contractStart,
-              contractEnd: person.contractEnd,
-              certificate: person.certificate,
+              position: person.position || null,
+              classification: person.classification || null,
+              siteStatus: person.siteStatus || null,
+              activeStatus: person.activeStatus || null,
+              mcuStatus: person.mcuStatus || null,
+              mcuExpiry: person.mcuExpiry || null,
+              pointOfHire: person.pointOfHire || null,
+              entryPermitStatus: person.entryPermitStatus || null,
+              entryPermitExpiry: person.entryPermitExpiry || null,
+              contractStart: person.contractStart || null,
+              contractEnd: person.contractEnd || null,
+              certificate: person.certificate || null,
               leaveStart: person.leaveStart || '',
               leaveEnd: person.leaveEnd || '',
               photoUrl: person.photoUrl || '',
