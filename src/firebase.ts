@@ -12,25 +12,35 @@ const sanitizedDatabaseId = (rawDatabaseId && rawDatabaseId.includes('https://')
   ? firebaseConfigFromJson.firestoreDatabaseId 
   : (rawDatabaseId || firebaseConfigFromJson.firestoreDatabaseId);
 
+// Check if Firebase is properly configured
+export const isFirebaseConfigured = !!firebaseConfigFromJson.apiKey && firebaseConfigFromJson.apiKey.startsWith("AIza");
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseConfigFromJson.apiKey,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfigFromJson.authDomain,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseConfigFromJson.projectId,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfigFromJson.storageBucket,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfigFromJson.messagingSenderId,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || firebaseConfigFromJson.appId,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || firebaseConfigFromJson.measurementId,
+  apiKey: isFirebaseConfigured ? firebaseConfigFromJson.apiKey : "AIza-BYPASS-MODE-PLACEHOLDER",
+  authDomain: firebaseConfigFromJson.authDomain || "bypass.firebaseapp.com",
+  projectId: firebaseConfigFromJson.projectId || "bypass-project",
+  storageBucket: firebaseConfigFromJson.storageBucket || "bypass.appspot.com",
+  messagingSenderId: firebaseConfigFromJson.messagingSenderId || "123456789",
+  appId: firebaseConfigFromJson.appId || "1:123456789:web:bypass",
+  measurementId: firebaseConfigFromJson.measurementId,
   firestoreDatabaseId: sanitizedDatabaseId
 };
 
 // Use the prioritized config
 const app = initializeApp(firebaseConfig);
 
-if (import.meta.env.DEV || window.location.hostname.includes('vercel.app') || !window.location.hostname.includes('localhost')) {
+if (!isFirebaseConfigured) {
+  console.warn('--- SYSTEM WARNING ---');
+  console.warn('Firebase API Key is missing. Application is running in OFFLINE/BYPASS mode.');
+  console.warn('----------------------');
+} else if (import.meta.env.DEV || window.location.hostname.includes('vercel.app') || !window.location.hostname.includes('localhost')) {
   console.log('--- SYSTEM DIAGNOSTICS ---');
   console.log('Current Domain:', window.location.hostname);
-  console.log('Firebase Project:', firebaseConfig.projectId);
+  console.log('Firebase Project ID:', firebaseConfig.projectId);
+  console.log('Firebase App ID:', firebaseConfig.appId);
+  console.log('Messaging Sender ID:', firebaseConfig.messagingSenderId);
   console.log('Auth Domain:', firebaseConfig.authDomain);
+  console.log('API Key (First 10):', firebaseConfig.apiKey?.substring(0, 10) + '...');
   console.log('Firestore DB ID:', firebaseConfig.firestoreDatabaseId);
   if (rawDatabaseId !== sanitizedDatabaseId) {
     console.warn('WARNING: Detected invalid Database URL in config. Sanitized to ID.');
@@ -38,14 +48,16 @@ if (import.meta.env.DEV || window.location.hostname.includes('vercel.app') || !w
   console.log('--------------------------');
 }
 
-// Initialize Firestore with robust settings
+// Initialize Firestore with robust settings and fallback
+const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
 export const db = initializeFirestore(app, {
   localCache: memoryLocalCache(),
-}, firebaseConfig.firestoreDatabaseId || '(default)');
+}, dbId);
 
-// Test connection to Firestore with retry logic
+// Test connection to Firestore with retry logic and fallback attempt
 export async function testConnection(retries = 3) {
-  if (import.meta.env.DEV) console.log('Firestore: Starting connection test...');
+  if (!isFirebaseConfigured) return { success: false, error: 'Firebase not configured' };
+  const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
   
   for (let i = 0; i < retries; i++) {
     try {
@@ -54,17 +66,19 @@ export async function testConnection(retries = 3) {
       await getDocFromServer(testDoc);
       
       if (import.meta.env.DEV) console.log('Firestore: Connection verified successfully');
-      return true;
+      return { success: true, error: null };
     } catch (error: any) {
       console.warn(`Firestore Connection Attempt ${i + 1} failed:`, error.message);
       
-      if (i < retries - 1) {
-        const delay = Math.pow(2, i + 1) * 1000;
-        await new Promise(resolve => setTimeout(resolve, delay));
+      if (i === retries - 1) {
+        return { success: false, error: error.message };
       }
+
+      const delay = Math.pow(2, i + 1) * 1000;
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
-  return false;
+  return { success: false, error: 'Unknown connection error' };
 }
 
 // Call test connection on boot with a delay to allow the environment to initialize

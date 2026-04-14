@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { auth, onAuthStateChanged, db, doc, getDoc, getDocFromServer, setDoc, FirebaseUser, googleProvider, signInWithPopup, signOut, handleFirestoreError, OperationType, enableNetwork, disableNetwork, onSnapshot } from './firebase';
+import { auth, onAuthStateChanged, db, doc, getDoc, getDocFromServer, setDoc, FirebaseUser, googleProvider, signInWithPopup, signOut, handleFirestoreError, OperationType, enableNetwork, disableNetwork, onSnapshot, testConnection, isFirebaseConfigured } from './firebase';
 import { UserProfile, UserRole } from './types';
 import Dashboard from './components/Dashboard';
 import Login from './components/Login';
@@ -18,11 +18,56 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isAuthResolved, setIsAuthResolved] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<string>('Initializing...');
+  const [firestoreConnected, setFirestoreConnected] = useState<boolean | null>(null);
+  const [firestoreError, setFirestoreError] = useState<string | null>(null);
+
+  // Test Firestore connection
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const result = await testConnection(2);
+        if (typeof result === 'object') {
+          setFirestoreConnected(result.success);
+          if (!result.success) setFirestoreError(result.error);
+        } else {
+          setFirestoreConnected(result);
+        }
+      } catch (e: any) {
+        setFirestoreConnected(false);
+        setFirestoreError(e.message);
+      }
+    };
+    checkConnection();
+  }, []);
   const [loginLoading, setLoginLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let unsubscribeProfile: (() => void) | null = null;
+
+    // BYPASS MODE: If Firebase is not configured, use a mock user
+    if (!isFirebaseConfigured) {
+      console.log('Bypassing Firebase Auth - Using Mock User');
+      const mockUser = {
+        uid: 'mock-user-123',
+        email: 'admin@mock.local',
+        displayName: 'Mock Administrator',
+        photoURL: 'https://picsum.photos/seed/admin/200'
+      } as any;
+      
+      setUser(mockUser);
+      setProfile({
+        id: 'mock-user-123',
+        name: 'Mock Administrator',
+        email: 'admin@mock.local',
+        role: 'Super Admin',
+        roles: ['Super Admin'],
+        projects: []
+      });
+      setLoading(false);
+      setIsAuthResolved(true);
+      return;
+    }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setIsAuthResolved(true);
@@ -90,20 +135,27 @@ export default function App() {
           setError(null);
           setLoading(false);
         } else {
-          // This shouldn't happen often after the initial getDoc/setDoc
-          setConnectionStatus('Waiting for profile data...');
+          setConnectionStatus('Profile missing. Initializing...');
+          // Attempt to re-create if it disappeared
+          const isOwner = isSuperAdmin(firebaseUser.email);
+          const newProfile: UserProfile = {
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName || 'New User',
+            email: firebaseUser.email || '',
+            role: isOwner ? 'Super Admin' : 'Supervisor',
+            roles: [isOwner ? 'Super Admin' : 'Supervisor'],
+            projects: [],
+          };
+          setDoc(userDocRef, newProfile).catch(e => {
+            console.error('Auto-repair failed:', e);
+            setError(`PROFILE_INIT_ERROR: ${e.message}`);
+          });
         }
       }, (err) => {
         console.error('Profile snapshot error:', err);
         const errStr = err.message?.toLowerCase() || '';
-        
-        if (errStr.includes('permission-denied')) {
-          setError(`ACCESS DENIED: Your account (${firebaseUser.email}) does not have permission to access its profile. Please contact an administrator.`);
-          setLoading(false);
-        } else if (!profile) {
-          setConnectionStatus('Syncing profile...');
-          // Don't set hard error yet, let the timeout handle it
-        }
+        setError(`FIRESTORE_SYNC_ERROR: ${err.message}`);
+        setLoading(false);
       });
 
       // Safety timeout
@@ -132,6 +184,8 @@ export default function App() {
     setLoginLoading(true);
     setError(null);
     try {
+      // Force account selection to ensure fresh token
+      googleProvider.setCustomParameters({ prompt: 'select_account' });
       await signInWithPopup(auth, googleProvider);
     } catch (error: any) {
       console.error('Login failed:', error);
@@ -291,6 +345,102 @@ export default function App() {
           profile && <Dashboard user={user} profile={profile} onLogout={handleLogout} />
         )}
       </AnimatePresence>
+
+      {/* Expert Diagnostic Overlay (Visible on error OR bypass mode) */}
+      {(error || !isFirebaseConfigured) && (
+        <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 items-end">
+          {!isFirebaseConfigured && (
+            <div className="bg-amber-500 text-black px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-tighter animate-pulse shadow-lg border border-black/20">
+              ⚠️ Offline / Bypass Mode
+            </div>
+          )}
+          <div className="bg-black/80 backdrop-blur-md border border-white/10 p-3 rounded-xl shadow-2xl max-w-xs">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+              <span className="text-[10px] font-mono text-white/60 uppercase tracking-widest">Diagnostic Nexus</span>
+            </div>
+            <div className="space-y-1 text-[9px] font-mono">
+              <div className="flex justify-between">
+                <span className="text-white/40">Project ID:</span>
+                <span className="text-emerald-500 truncate ml-2">{isFirebaseConfigured ? auth.app.options.projectId : 'OFFLINE'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/40">Project #:</span>
+                <span className="text-emerald-500 truncate ml-2">{isFirebaseConfigured ? auth.app.options.messagingSenderId : 'OFFLINE'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/40">Domain:</span>
+                <span className="text-emerald-500 truncate ml-2">{window.location.hostname}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-white/40">Auth API:</span>
+                <span className="text-red-500 animate-pulse font-bold">
+                  {error?.includes('auth/') 
+                    ? error.split('(')[1]?.split(')')[0] || 'MISCONFIGURED' 
+                    : error ? 'SYNC_ERROR' : 'OK'}
+                </span>
+              </div>
+              {error && !error.includes('auth/') && (
+                <div className="mt-1 p-1 bg-red-500/10 border border-red-500/20 rounded text-[6px] text-red-400 break-words font-mono">
+                  {error}
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-white/40">Firestore:</span>
+                <span className={firestoreConnected === true ? "text-emerald-500" : firestoreConnected === false ? "text-red-500" : "text-amber-500"}>
+                  {firestoreConnected === true ? 'CONNECTED' : firestoreConnected === false ? 'DISCONNECTED' : 'TESTING...'}
+                </span>
+              </div>
+              {firestoreError && (
+                <div className="mt-1 p-1 bg-red-500/10 border border-red-500/20 rounded text-[6px] text-red-400 break-words font-mono leading-tight">
+                  <span className="text-white/40 mr-1">FIRESTORE_ERROR:</span>
+                  {firestoreError}
+                </div>
+              )}
+              {error?.includes('popup-closed-by-user') && (
+                <div className="mt-2 p-2 bg-amber-500/10 border border-amber-500/30 rounded text-[8px] text-amber-400 leading-tight">
+                  <span className="font-bold block mb-1">⚠️ POPUP BLOCKED OR CLOSED</span>
+                  Please ensure your browser allows popups for this site and try clicking the login button only once.
+                </div>
+              )}
+              {error && !error.includes('popup-closed-by-user') && (
+                <div className="mt-2 p-1.5 bg-red-500/10 border border-red-500/20 rounded text-[7px] text-red-400 break-words leading-tight">
+                  {error.length > 100 ? error.substring(0, 100) + '...' : error}
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                <button 
+                  onClick={() => window.location.reload()}
+                  className="py-1.5 bg-white/10 hover:bg-white/20 text-white/80 rounded transition-colors text-[8px] uppercase tracking-widest font-bold"
+                >
+                  Hard Refresh
+                </button>
+                <button 
+                  onClick={() => {
+                    setLoading(true);
+                    setError(null);
+                    setConnectionStatus('Manual Sync Triggered...');
+                    window.location.reload();
+                  }}
+                  className="py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 rounded transition-colors text-[8px] uppercase tracking-widest font-bold"
+                >
+                  Force Sync
+                </button>
+                <button 
+                  onClick={() => {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.reload();
+                  }}
+                  className="py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-200 rounded transition-colors text-[8px] uppercase tracking-widest font-bold col-span-2"
+                >
+                  Reset Session & Cache
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
