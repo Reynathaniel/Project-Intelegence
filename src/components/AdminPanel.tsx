@@ -1520,7 +1520,7 @@ function AnalyticsView({ reports, projects, users, attendance }: { reports: Dail
         <div className="bg-neutral-900 p-6 rounded-2xl border border-neutral-800">
           <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest font-mono">Reports by Discipline</h3>
           <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minHeight={300}>
               <PieChart>
                 <Pie
                   data={disciplineData}
@@ -1549,7 +1549,7 @@ function AnalyticsView({ reports, projects, users, attendance }: { reports: Dail
         <div className="bg-neutral-900 p-6 rounded-2xl border border-neutral-800">
           <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest font-mono">Reporting Activity</h3>
           <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minHeight={300}>
               <AreaChart data={timelineData}>
                 <defs>
                   <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
@@ -1574,7 +1574,7 @@ function AnalyticsView({ reports, projects, users, attendance }: { reports: Dail
         <div className="bg-neutral-900 p-6 rounded-2xl border border-neutral-800">
           <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest font-mono">Manpower Trends (Last 7 Days)</h3>
           <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minHeight={300}>
               <BarChart data={manpowerData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                 <XAxis dataKey="date" stroke="#666" fontSize={10} tickLine={false} axisLine={false} />
@@ -1595,7 +1595,7 @@ function AnalyticsView({ reports, projects, users, attendance }: { reports: Dail
         <div className="bg-neutral-900 p-6 rounded-2xl border border-neutral-800">
           <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest font-mono">Project Activity Matrix</h3>
           <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minHeight={300}>
               <BarChart data={manpowerByProject} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={false} />
                 <XAxis type="number" stroke="#666" fontSize={10} tickLine={false} axisLine={false} />
@@ -1616,7 +1616,7 @@ function AnalyticsView({ reports, projects, users, attendance }: { reports: Dail
         <div className="bg-neutral-900 p-6 rounded-2xl border border-neutral-800">
           <h3 className="text-sm font-bold text-white mb-6 uppercase tracking-widest font-mono">Weather Distribution</h3>
           <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minHeight={300}>
               <PieChart>
                 <Pie
                   data={weatherChartData}

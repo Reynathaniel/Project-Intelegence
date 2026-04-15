@@ -4,7 +4,18 @@ import { initializeFirestore, memoryLocalCache, doc, getDoc, getDocs, collection
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import firebaseConfigFromJson from '../firebase-applet-config.json';
 
-// Support environment variables for Vercel deployment, fallback to JSON config
+// Support environment variables for Vercel/AI Studio deployment, fallback to JSON config
+const getCfg = (key: string, jsonVal: string) => {
+  const envKey = `VITE_FIREBASE_${key.toUpperCase().replace(/([A-Z])/g, '_$1')}`;
+  return import.meta.env[envKey] || jsonVal;
+};
+
+const rawApiKey = import.meta.env.VITE_FIREBASE_API_KEY || firebaseConfigFromJson.apiKey;
+const rawProjectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseConfigFromJson.projectId;
+
+// Check if Firebase is properly configured
+export const isFirebaseConfigured = !!rawApiKey && rawApiKey.startsWith("AIza") && !!rawProjectId;
+
 const rawDatabaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || firebaseConfigFromJson.firestoreDatabaseId;
 
 // CRITICAL FIX: Ensure databaseId is just the ID string, not a URL
@@ -12,17 +23,14 @@ const sanitizedDatabaseId = (rawDatabaseId && rawDatabaseId.includes('https://')
   ? firebaseConfigFromJson.firestoreDatabaseId 
   : (rawDatabaseId || firebaseConfigFromJson.firestoreDatabaseId);
 
-// Check if Firebase is properly configured
-export const isFirebaseConfigured = !!firebaseConfigFromJson.apiKey && firebaseConfigFromJson.apiKey.startsWith("AIza");
-
 const firebaseConfig = {
-  apiKey: isFirebaseConfigured ? firebaseConfigFromJson.apiKey : "AIza-BYPASS-MODE-PLACEHOLDER",
-  authDomain: firebaseConfigFromJson.authDomain || "bypass.firebaseapp.com",
-  projectId: firebaseConfigFromJson.projectId || "bypass-project",
-  storageBucket: firebaseConfigFromJson.storageBucket || "bypass.appspot.com",
-  messagingSenderId: firebaseConfigFromJson.messagingSenderId || "123456789",
-  appId: firebaseConfigFromJson.appId || "1:123456789:web:bypass",
-  measurementId: firebaseConfigFromJson.measurementId,
+  apiKey: isFirebaseConfigured ? rawApiKey : "AIza-BYPASS-MODE-PLACEHOLDER",
+  authDomain: getCfg('authDomain', firebaseConfigFromJson.authDomain) || (rawProjectId ? `${rawProjectId}.firebaseapp.com` : "bypass.firebaseapp.com"),
+  projectId: rawProjectId || "bypass-project",
+  storageBucket: getCfg('storageBucket', firebaseConfigFromJson.storageBucket) || (rawProjectId ? `${rawProjectId}.firebasestorage.app` : "bypass.appspot.com"),
+  messagingSenderId: getCfg('messagingSenderId', firebaseConfigFromJson.messagingSenderId) || "123456789",
+  appId: getCfg('appId', firebaseConfigFromJson.appId) || "1:123456789:web:bypass",
+  measurementId: getCfg('measurementId', firebaseConfigFromJson.measurementId),
   firestoreDatabaseId: sanitizedDatabaseId
 };
 
@@ -57,19 +65,28 @@ export const db = initializeFirestore(app, {
 // Test connection to Firestore with retry logic and fallback attempt
 export async function testConnection(retries = 3) {
   if (!isFirebaseConfigured) return { success: false, error: 'Firebase not configured' };
-  const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
   
   for (let i = 0; i < retries; i++) {
     try {
       // Attempt to get a document from the 'test' collection which is allowed by rules
+      // We use getDocFromServer to bypass cache and force a network check
       const testDoc = doc(db, 'test', 'connection');
       await getDocFromServer(testDoc);
       
       if (import.meta.env.DEV) console.log('Firestore: Connection verified successfully');
       return { success: true, error: null };
     } catch (error: any) {
+      const isOffline = error.message?.includes('offline') || error.code === 'unavailable';
       console.warn(`Firestore Connection Attempt ${i + 1} failed:`, error.message);
       
+      if (isOffline) {
+        return { 
+          success: false, 
+          error: 'The client is offline. This usually indicates an incorrect Firebase configuration (API Key, Project ID, or Database ID).',
+          isConfigError: true
+        };
+      }
+
       if (i === retries - 1) {
         return { success: false, error: error.message };
       }

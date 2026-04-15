@@ -246,8 +246,8 @@ export default function CostControlDashboard({ project, userProfile, onNavigate 
             <BarChart3 size={16} className="text-emerald-500" />
             Requests by Status
           </h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%" minHeight={300}>
               <BarChart data={statusData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
                 <XAxis 
@@ -276,9 +276,9 @@ export default function CostControlDashboard({ project, userProfile, onNavigate 
             <PieChartIcon size={16} className="text-blue-500" />
             Discipline Distribution
           </h3>
-          <div className="h-64 flex items-center">
+          <div className="h-[300px] flex items-center">
             <div className="w-1/2 h-full">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minHeight={300}>
                 <PieChart>
                   <Pie
                     data={disciplineData}

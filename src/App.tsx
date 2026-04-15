@@ -17,6 +17,7 @@ export default function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthResolved, setIsAuthResolved] = useState(false);
+  const [forceBypass, setForceBypass] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<string>('Initializing...');
   const [firestoreConnected, setFirestoreConnected] = useState<boolean | null>(null);
   const [firestoreError, setFirestoreError] = useState<string | null>(null);
@@ -45,9 +46,9 @@ export default function App() {
   useEffect(() => {
     let unsubscribeProfile: (() => void) | null = null;
 
-    // BYPASS MODE: If Firebase is not configured, use a mock user
-    if (!isFirebaseConfigured) {
-      console.log('Bypassing Firebase Auth - Using Mock User');
+    // BYPASS MODE: If Firebase is not configured OR forceBypass is active, use a mock user
+    if (!isFirebaseConfigured || forceBypass) {
+      console.log(forceBypass ? 'Force Bypassing Firebase Auth' : 'Bypassing Firebase Auth - Using Mock User');
       const mockUser = {
         uid: 'mock-user-123',
         email: 'admin@mock.local',
@@ -98,7 +99,8 @@ export default function App() {
 
       // Use a one-time get first to handle initial profile creation more reliably
       try {
-        const initialSnap = await getDoc(userDocRef);
+        // Force network fetch for initial check to detect config issues early
+        const initialSnap = await getDocFromServer(userDocRef);
         if (!initialSnap.exists()) {
           setConnectionStatus('Initializing new user profile...');
           const isOwner = isSuperAdmin(firebaseUser.email);
@@ -114,9 +116,13 @@ export default function App() {
         }
       } catch (err: any) {
         console.error('Initial profile check failed:', err);
-        // If it's a permission error, it might be because the doc doesn't exist yet
-        // and rules are strict, but our rules should allow this.
-        // We'll continue to the snapshot listener which might have better luck
+        const isOffline = err.message?.toLowerCase().includes('offline');
+        if (isOffline) {
+          setError(`FIRESTORE_CONFIG_ERROR: The system cannot reach the database. This usually means your Firebase API Key, Project ID, or Database ID is incorrect. Please verify your environment variables.`);
+          setLoading(false);
+          return;
+        }
+        // For other errors, we might still want to try the snapshot listener
       }
 
       // Now set up the real-time listener
@@ -177,7 +183,7 @@ export default function App() {
       unsubscribe();
       if (unsubscribeProfile) unsubscribeProfile();
     };
-  }, [user?.uid]); // Only depend on user.uid to avoid loops
+  }, [user?.uid, forceBypass]); // Only depend on user.uid and forceBypass to avoid loops
 
   const handleLogin = async () => {
     if (loginLoading) return;
@@ -315,6 +321,21 @@ export default function App() {
                         <li>Authentication &gt; Settings &gt; Authorized domains</li>
                         <li>Add <span className="text-white font-mono">{window.location.hostname}</span></li>
                       </ol>
+                    </div>
+                  )}
+
+                  {error?.includes('FIRESTORE_CONFIG_ERROR') && (
+                    <div className="pt-2 border-t border-white/5 space-y-2">
+                      <p className="text-[10px] text-amber-500 font-bold uppercase tracking-widest">Diagnostic Advice:</p>
+                      <p className="text-[10px] text-neutral-400 leading-relaxed">
+                        The connection failed with an "offline" status. This is almost always due to an invalid API Key or Project ID in your environment variables.
+                      </p>
+                      <button
+                        onClick={() => setForceBypass(true)}
+                        className="w-full py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg text-[10px] font-bold text-amber-500 hover:bg-amber-500/20 transition-all uppercase tracking-widest"
+                      >
+                        Enter Bypass Mode (Local Only)
+                      </button>
                     </div>
                   )}
                 </div>

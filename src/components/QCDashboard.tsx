@@ -561,7 +561,7 @@ export default function QCDashboard({ project, reports, userProfile, onNavigateT
                   </h3>
                 </div>
                 <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={300}>
                     <BarChart data={stats.chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
                       <XAxis 
@@ -601,7 +601,7 @@ export default function QCDashboard({ project, reports, userProfile, onNavigateT
                 </div>
                 <div className="h-[300px] w-full flex items-center justify-start">
                   {stats.statusData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minHeight={300}>
                       <PieChart>
                         <Pie
                           data={stats.statusData}
