@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "DM Sans", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --color-pi-ink: #0A0A0A;
+  --color-pi-surface: #FAFAFA;
+  --color-pi-border: #E5E5E5;
+  --color-pi-accent: #10B981;
+  --color-pi-accent-dim: #10B98120;
+  --color-pi-warning: #F59E0B;
+  --color-pi-critical: #EF4444;
+  --color-pi-intel: #6366F1;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background: var(--color-pi-accent);
+    color: white;
+  }
+}
+
+/* Scrollbar */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #555; }
+
+/* Loading spinner */
+@keyframes pi-spin {
+  to { transform: rotate(360deg); }
+}
+.pi-spinner {
+  border: 3px solid #333;
+  border-top-color: var(--color-pi-accent);
+  border-radius: 50%;
+  animation: pi-spin 0.8s linear infinite;
+}
